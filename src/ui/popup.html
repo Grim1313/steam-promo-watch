@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Steam Promo Watch</title>
+    <link rel="stylesheet" href="./popup.css">
+  </head>
+  <body>
+    <main class="popup-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Steam Promo Watch</p>
+          <h1>Free to Keep</h1>
+        </div>
+        <button id="check-now" class="primary-button" type="button">Check now</button>
+      </header>
+
+      <section class="status-panel">
+        <div class="status-row">
+          <span class="label">Status</span>
+          <span id="status-text" class="value">Loading...</span>
+        </div>
+        <div class="status-row">
+          <span class="label">Last success</span>
+          <span id="last-success" class="value">Never</span>
+        </div>
+        <div class="status-row">
+          <span class="label">Next check</span>
+          <span id="next-check" class="value">Unknown</span>
+        </div>
+      </section>
+
+      <section id="warning-box" class="warning-box hidden"></section>
+
+      <section class="list-panel">
+        <div class="section-head">
+          <h2 id="promotions-heading">Latest promotions</h2>
+          <span id="unread-pill" class="pill hidden"></span>
+        </div>
+        <div id="empty-state" class="empty-state hidden">No promotions found yet.</div>
+        <ul id="promotion-list" class="promotion-list"></ul>
+      </section>
+
+      <footer class="footer">
+        <a id="open-history" class="footer-link" href="#">Open history</a>
+        <a id="open-options" class="footer-link" href="#">Settings</a>
+      </footer>
+
+      <p id="app-version" class="app-version" aria-label="Extension version"></p>
+    </main>
+
+    <script type="module" src="./popup.js"></script>
+  </body>
+  </html>

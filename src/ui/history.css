@@ -1,0 +1,150 @@
+:root {
+  --bg: linear-gradient(180deg, #f5f7fb 0%, #edf2f7 100%);
+  --panel: rgba(255, 255, 255, 0.95);
+  --border: rgba(21, 40, 61, 0.08);
+  --text: #172331;
+  --muted: #617282;
+  --accent: #0d78b9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Aptos, "Segoe UI", sans-serif;
+}
+
+.page-shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+h1 {
+  margin: 0;
+  font-size: 34px;
+}
+
+.lead,
+.header-link,
+.empty-state {
+  color: var(--muted);
+}
+
+.header-link {
+  text-decoration: none;
+}
+
+.panel {
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top right, rgba(13, 120, 185, 0.08), transparent 36%),
+    var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 14px 28px rgba(27, 44, 68, 0.08);
+  padding: 20px;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.history-table th,
+.history-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(21, 40, 61, 0.08);
+  text-align: left;
+  vertical-align: top;
+}
+
+.history-table th {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.game-link {
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.title-cell {
+  min-width: 320px;
+}
+
+.history-entry {
+  display: grid;
+  grid-template-columns: 144px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.history-entry-preview {
+  display: block;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(21, 40, 61, 0.06);
+}
+
+.history-entry-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.history-entry-copy {
+  min-width: 0;
+}
+
+.game-link:hover,
+.header-link:hover {
+  color: var(--accent);
+}
+
+.tag {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(23, 35, 49, 0.06);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.empty-state {
+  padding: 24px 12px;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .history-entry {
+    grid-template-columns: 1fr;
+  }
+}

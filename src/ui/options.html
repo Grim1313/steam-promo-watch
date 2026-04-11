@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Steam Promo Watch Settings</title>
+    <link rel="stylesheet" href="./options.css">
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Steam Promo Watch</p>
+          <h1>Settings</h1>
+        </div>
+        <img class="page-icon" src="../../resources/icons/icon48.png" alt="Steam Promo Watch icon" width="48" height="48">
+      </header>
+
+      <form id="settings-form" class="settings-grid">
+        <section class="panel">
+          <h2>Notifications</h2>
+          <label class="toggle"><input type="checkbox" id="notificationsEnabled"> Enable browser notifications</label>
+          <label class="toggle"><input type="checkbox" id="badgeEnabled"> Show active Free to Keep count on the extension icon (red means new unread finds)</label>
+          <label class="toggle"><input type="checkbox" id="renotifyAfterRetention"> Allow repeat notification after dedupe TTL expires</label>
+          <div class="field-grid">
+            <label>
+              <span>Dedupe retention (days)</span>
+              <input type="number" min="1" max="365" id="notifiedRetentionDays">
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Tracked promotion types</h2>
+          <label class="toggle"><input type="checkbox" id="trackFreeToKeep"> Track Free to Keep</label>
+          <p class="note">This extension intentionally tracks only Free to Keep promotions. Temporary free / Free Weekend / Play for Free campaigns are not included.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Schedule</h2>
+          <div class="field-grid">
+            <label>
+              <span>Check frequency</span>
+              <select id="checkIntervalMinutes">
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="180">3 hours</option>
+                <option value="360">6 hours</option>
+                <option value="720">12 hours</option>
+                <option value="1440">24 hours</option>
+              </select>
+            </label>
+          </div>
+          <label class="toggle"><input type="checkbox" id="quietHoursEnabled"> Enable quiet hours</label>
+          <div class="field-grid two-columns">
+            <label>
+              <span>Quiet start</span>
+              <input type="time" id="quietHoursStart">
+            </label>
+            <label>
+              <span>Quiet end</span>
+              <input type="time" id="quietHoursEnd">
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>History</h2>
+          <label class="toggle"><input type="checkbox" id="historyEnabled"> Keep local history</label>
+          <div class="field-grid">
+            <label>
+              <span>History retention (days)</span>
+              <input type="number" min="1" max="365" id="historyRetentionDays">
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Filters</h2>
+          <div class="toggle-grid">
+            <label class="toggle"><input type="checkbox" id="ignoreDlc"> Ignore DLC</label>
+            <label class="toggle"><input type="checkbox" id="ignoreSoundtracks"> Ignore soundtracks</label>
+            <label class="toggle"><input type="checkbox" id="ignoreDemos"> Ignore demos</label>
+            <label class="toggle"><input type="checkbox" id="ignoreTools"> Ignore tools</label>
+            <label class="toggle"><input type="checkbox" id="ignorePackages"> Ignore packages</label>
+          </div>
+          <div class="field-grid">
+            <label>
+              <span>Blocked appId / packageId list</span>
+              <textarea id="blockedAppIds" rows="4" placeholder="One ID per line"></textarea>
+            </label>
+            <label>
+              <span>Blocked title keywords</span>
+              <textarea id="blockedKeywords" rows="4" placeholder="One keyword per line"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Actions</h2>
+          <div class="button-row">
+            <button type="submit" class="primary-button">Save settings</button>
+            <button type="button" id="test-notification" class="secondary-button">Send test notification</button>
+          </div>
+          <div class="button-row">
+            <button type="button" id="clear-history" class="secondary-button danger-button">Clear history</button>
+            <button type="button" id="reset-settings" class="secondary-button">Reset settings</button>
+          </div>
+          <p id="form-status" class="note"></p>
+        </section>
+      </form>
+
+      <p id="app-version" class="app-version" aria-label="Extension version"></p>
+    </main>
+
+    <script type="module" src="./options.js"></script>
+  </body>
+  </html>

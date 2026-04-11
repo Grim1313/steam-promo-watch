@@ -1,0 +1,9 @@
+{
+  "name": "steam-promo-watch",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "pack": "pwsh -File scripts/build-release.ps1"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Steam Promo Watch",
+  "description": "Tracks new Steam free-to-keep promotions and notifies you about new giveaways.",
+  "version": "0.1.0",
+  "minimum_chrome_version": "120",
+  "permissions": [
+    "alarms",
+    "notifications",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://store.steampowered.com/*",
+    "https://*.steamstatic.com/*"
+  ],
+  "background": {
+    "service_worker": "src/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Steam Promo Watch",
+    "default_popup": "src/ui/popup.html"
+  },
+  "options_page": "src/ui/options.html",
+  "icons": {
+    "16": "resources/icons/icon16.png",
+    "32": "resources/icons/icon32.png",
+    "48": "resources/icons/icon48.png",
+    "128": "resources/icons/icon128.png"
+  }
+}

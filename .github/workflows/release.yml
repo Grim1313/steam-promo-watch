@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build release archive
+        id: build
+        shell: pwsh
+        run: |
+          $archivePath = ./scripts/build-release.ps1
+          "archive_path=$archivePath" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          gh release create $env:GITHUB_REF_NAME "${{ steps.build.outputs.archive_path }}" --title "Steam Promo Watch $env:GITHUB_REF_NAME" --generate-notes
