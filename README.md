@@ -51,8 +51,6 @@ It does not currently track temporary free play events such as `Free Weekend` or
 
 ## How to install in Chrome
 
-### Recommended: install from GitHub Release
-
 1. Open the repository's `Releases` page on GitHub.
 2. Download the asset `steam-promo-watch-<version>.zip`.
 3. Extract the archive to a local folder.
@@ -70,55 +68,7 @@ The release archive contains only the extension runtime files needed by the brow
 
 Do not use GitHub's auto-generated `Source code (zip)` archive for installation. That archive is a repository snapshot and may include development files that are not part of the release package.
 
-### Local development install
-
-1. Open Chrome.
-2. Go to `chrome://extensions/`.
-3. Turn on `Developer mode`.
-4. Click `Load unpacked`.
-5. Select the project folder:
-   `C:\Users\mail2\Documents\GitHub\steam-promo-watch`
-
 For Microsoft Edge, use the same steps on `edge://extensions/`.
-
-## Release process
-
-The repository is set up to produce a clean release archive and publish it on GitHub Releases.
-
-### Create a local release archive
-
-Run:
-
-```powershell
-pwsh -File scripts/build-release.ps1
-```
-
-This will create:
-
-```text
-dist/steam-promo-watch-<version>.zip
-```
-
-The version is read directly from `manifest.json`.
-
-If you already use Node locally, the same packaging step is also available as:
-
-```powershell
-npm run pack
-```
-
-### Publish a GitHub Release
-
-1. Make sure `manifest.json` contains the target version, for example `0.1.0`.
-2. Commit the release changes.
-3. Create and push a tag that matches the version:
-
-```powershell
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-4. GitHub Actions will build `dist/steam-promo-watch-0.1.0.zip` and attach it to a new GitHub Release for `v0.1.0`.
 
 ## How to use it
 
