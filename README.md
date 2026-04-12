@@ -1,4 +1,4 @@
-# Steam Promo Watch
+# Steam Promo Watch - track free game giveaways on Steam.
 
 Steam Promo Watch is a lightweight Chrome / Edge extension that watches Steam for `Free to Keep` promotions and notifies you when something new appears.
 
@@ -45,7 +45,7 @@ You can also open the popup at any time to:
 
 ## What it tracks
 
-This extension intentionally tracks only `Free to Keep` promotions.
+This extension intentionally tracks only `Free to Keep` promotions on Steam website.
 
 It does not currently track temporary free play events such as `Free Weekend` or `Play for Free`.
 
@@ -59,12 +59,6 @@ It does not currently track temporary free play events such as `Free Weekend` or
 6. Click `Load unpacked`.
 7. Select the extracted `steam-promo-watch` folder.
 
-The release archive contains only the extension runtime files needed by the browser:
-
-- `manifest.json`
-- `src/`
-- `resources/icons/`
-- `LICENSE`
 
 Do not use GitHub's auto-generated `Source code (zip)` archive for installation. That archive is a repository snapshot and may include development files that are not part of the release package.
 
