@@ -71,6 +71,8 @@ For Microsoft Edge, use the same steps on `edge://extensions/`.
 3. Use `Check now` when you want an immediate scan.
 4. Keep the browser installed and enabled so scheduled checks can continue.
 
+It is recommended to pin Steam Promo Watch to your browser's toolbar so you don't miss any free games it finds.
+
 ## Limitations
 
 - The extension is still in alpha.
