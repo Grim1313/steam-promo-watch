@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1
+
+### What's new
+
+- Updated the GitHub Actions release workflow to use `actions/checkout@v6`, which is compatible with Node 24.
+- Fixed the release workflow so it actually runs the packaging script and captures the generated archive path.
+- Made the release workflow idempotent: if a GitHub release already exists for the tag, the workflow now uploads or replaces the asset instead of failing.
+
 ## 0.2.0
 
 ### What's new

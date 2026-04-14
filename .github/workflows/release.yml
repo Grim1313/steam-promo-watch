@@ -14,18 +14,29 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build release archive
         id: build
         shell: pwsh
         run: |
-          $archivePath = ./scripts/build-release.ps1
+          $archivePath = pwsh -File ./scripts/build-release.ps1
+          if (-not $archivePath) {
+            throw "build-release.ps1 did not return an archive path"
+          }
           "archive_path=$archivePath" >> $env:GITHUB_OUTPUT
 
-      - name: Create GitHub release
+      - name: Create or update GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
-          gh release create $env:GITHUB_REF_NAME "${{ steps.build.outputs.archive_path }}" --title "Steam Promo Watch $env:GITHUB_REF_NAME" --generate-notes
+          $tag = $env:GITHUB_REF_NAME
+          $archivePath = "${{ steps.build.outputs.archive_path }}"
+
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag $archivePath --clobber
+          } else {
+            gh release create $tag $archivePath --title "Steam Promo Watch $tag" --generate-notes
+          }
