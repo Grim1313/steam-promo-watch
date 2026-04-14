@@ -66,6 +66,18 @@ Do not use GitHub's auto-generated `Source code (zip)` archive for installation.
 
 For Microsoft Edge, use the same steps on `edge://extensions/`.
 
+## How to update extension
+
+1. Open the repository's `Releases` page on GitHub.
+2. Download the new asset `steam-promo-watch-<version>.zip`.
+3. Extract the new archive.
+4. If you want to keep the same extension entry in the browser, replace the contents of the folder you used for the previous version with the newly extracted files.
+5. Open `chrome://extensions/` or `edge://extensions/`.
+6. Find `Steam Promo Watch`.
+7. Click `Reload`.
+
+If you extracted the new version into a different folder instead of replacing the old one, remove the currently loaded unpacked extension first, then load the new folder with `Load unpacked`.
+
 ## How to use it
 
 1. Click the extension icon in the browser toolbar.
