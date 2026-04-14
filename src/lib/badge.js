@@ -15,6 +15,10 @@ export async function updateBadge(runtimeState, settings) {
 
   const unreadCount = Number(runtimeState?.unreadCount) || 0;
   const activeFreeToKeepCount = Number(runtimeState?.activeFreeToKeepCount) || 0;
+  if (activeFreeToKeepCount <= 0) {
+    await chrome.action.setBadgeText({ text: "" });
+    return;
+  }
 
   await chrome.action.setBadgeBackgroundColor({
     color: unreadCount > 0 ? BADGE_COLORS.unread : BADGE_COLORS.read

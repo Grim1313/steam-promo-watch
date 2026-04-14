@@ -9,6 +9,8 @@ export async function fetchPromotionsFromProviders(settings) {
   let hadSuccess = false;
 
   if (settings.trackFreeToKeep) {
+    let primaryFailedMessage = "";
+
     try {
       const primary = await steamStoreSearchProvider.fetchPromotions();
       providerIds.push(steamStoreSearchProvider.id);
@@ -24,7 +26,7 @@ export async function fetchPromotionsFromProviders(settings) {
         hadSuccess = hadSuccess || fallback.success;
       }
     } catch (error) {
-      warnings.push(`Free to Keep provider failed: ${error instanceof Error ? error.message : String(error)}`);
+      primaryFailedMessage = `Free to Keep provider failed: ${error instanceof Error ? error.message : String(error)}`;
       try {
         const fallback = await fallbackProvider.fetchPromotions();
         providerIds.push(fallbackProvider.id);
@@ -32,6 +34,9 @@ export async function fetchPromotionsFromProviders(settings) {
         promotions.push(...(fallback.promotions || []));
         hadSuccess = hadSuccess || fallback.success;
       } catch (fallbackError) {
+        if (primaryFailedMessage) {
+          warnings.push(primaryFailedMessage);
+        }
         warnings.push(`Fallback provider failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
       }
     }

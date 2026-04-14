@@ -5,6 +5,8 @@ Steam Promo Watch is a lightweight Chrome / Edge extension that watches Steam fo
 > Early alpha: the extension is still in active development.
 > Behavior may change, some features may be incomplete, and bugs are still expected.
 
+Release notes are tracked in [CHANGELOG.md](CHANGELOG.md).
+
 ## What it is
 
 Steam Promo Watch helps you catch Steam games that become free to keep for a limited time.

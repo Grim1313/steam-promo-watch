@@ -69,7 +69,7 @@ export const steamStoreSearchProvider = {
 
     return {
       promotions,
-      warnings: promotions.length === 0 ? ["Steam search returned no free special rows."] : [],
+      warnings: [],
       success: true
     };
   }

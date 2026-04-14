@@ -1,5 +1,6 @@
 import { getContentTypeLabel, getPromotionTypeLabel } from "../lib/filters.js";
 import { formatDateTime, formatRelativeTime, getPromotionImageUrl } from "../lib/utils.js";
+import { getPopupStatusText, getVisiblePromotions } from "./popup-state.js";
 
 const checkNowButton = document.querySelector("#check-now");
 const statusText = document.querySelector("#status-text");
@@ -26,7 +27,7 @@ function renderWarning(text) {
 }
 
 function renderPromotions(entries) {
-  const visibleEntries = entries.slice(0, 10);
+  const visibleEntries = getVisiblePromotions(entries);
 
   promotionList.textContent = "";
   emptyState.classList.toggle("hidden", visibleEntries.length > 0);
@@ -113,16 +114,7 @@ function renderPromotions(entries) {
 }
 
 function renderStatus(runtimeState) {
-  if (runtimeState.checkInProgress) {
-    statusText.textContent = "Checking now...";
-  } else if (runtimeState.lastCheckOutcome === "error") {
-    statusText.textContent = "Source error";
-  } else if (runtimeState.lastCheckOutcome === "success") {
-    statusText.textContent = runtimeState.lastResultCount > 0 ? `${runtimeState.lastResultCount} promotion(s) tracked` : "No active promotions";
-  } else {
-    statusText.textContent = "Idle";
-  }
-
+  statusText.textContent = getPopupStatusText(runtimeState);
   lastSuccess.textContent = formatDateTime(runtimeState.lastSuccessAt);
   nextCheck.textContent = runtimeState.nextCheckAt ? `${formatDateTime(runtimeState.nextCheckAt)} (${formatRelativeTime(runtimeState.nextCheckAt)})` : "Not scheduled";
   checkNowButton.disabled = runtimeState.checkInProgress;

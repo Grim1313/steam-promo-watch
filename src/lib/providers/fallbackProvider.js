@@ -27,7 +27,7 @@ export const fallbackProvider = {
 
     return {
       promotions,
-      warnings: promotions.length === 0 ? ["Featured categories did not contain free giveaways."] : [],
+      warnings: [],
       success: true
     };
   }

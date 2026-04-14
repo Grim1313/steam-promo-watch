@@ -51,7 +51,7 @@ test("updateBadge shows unread state in red using the active Free to Keep count"
   ]);
 });
 
-test("updateBadge keeps the count visible in green when everything is already read", async (t) => {
+test("updateBadge hides the toolbar badge when no active promotions were found", async (t) => {
   const calls = createChromeMock();
   t.after(() => {
     delete globalThis.chrome;
@@ -63,7 +63,6 @@ test("updateBadge keeps the count visible in green when everything is already re
   );
 
   assert.deepEqual(calls, [
-    ["setBadgeBackgroundColor", { color: "#2f8f46" }],
-    ["setBadgeText", { text: "0" }]
+    ["setBadgeText", { text: "" }]
   ]);
 });
