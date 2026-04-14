@@ -17,3 +17,11 @@
 - The popup list now keeps only active promotions visible, which removes stale non-active entries from the main view.
 - The toolbar badge is now hidden when there are no active `Free to Keep` promotions.
 - When active promotions exist, the badge still shows the active count: red for unread items, green when everything is already seen.
+
+## 0.1.0
+
+## What's new
+
+- Initial release
+
+**Full Changelog**: https://github.com/Grim1313/steam-promo-watch/commits/v0.1.0
