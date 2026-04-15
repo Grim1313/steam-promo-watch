@@ -24,4 +24,3 @@
 
 - Initial release
 
-**Full Changelog**: https://github.com/Grim1313/steam-promo-watch/commits/v0.1.0
