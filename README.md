@@ -26,6 +26,8 @@ It is built for people who want:
 - automatic checks in the background
 - browser notifications when a new promotion appears
 - a small popup with recent results and status
+- Steam user review badges directly on promotion cards
+- an ignore list with restore support for promotions you do not want to see right now
 - simple settings without extra complexity
 
 ## How it works
@@ -37,13 +39,16 @@ When it finds a new one, it can:
 - show a browser notification
 - update the extension badge
 - save a short local history so you can see recent detections
+- include Steam review summary details when review data is available
 
 You can also open the popup at any time to:
 
 - see the latest promotions
+- see Steam review badges on supported entries
 - check when the last scan happened
 - see when the next scan is planned
 - start a manual check with `Check now`
+- open the latest GitHub release from `Check for updates`
 
 ## What it tracks
 
@@ -81,9 +86,11 @@ If you extracted the new version into a different folder instead of replacing th
 ## How to use it
 
 1. Click the extension icon in the browser toolbar.
-2. Open `Settings` if you want to change the check interval, notifications, badge, or quiet hours.
+2. Open `Settings` if you want to change the check interval, notifications, badge, quiet hours, or restore ignored promotions.
 3. Use `Check now` when you want an immediate scan.
-4. Keep the browser installed and enabled so scheduled checks can continue.
+4. Use `Ignore` on a promotion card when you want to hide that title until you restore it later from Settings.
+5. Use `Check for updates` in the popup when you want to jump straight to the latest release on GitHub.
+6. Keep the browser installed and enabled so scheduled checks can continue.
 
 It is recommended to pin Steam Promo Watch to your browser's toolbar so you don't miss any free games it finds.
 
