@@ -10,8 +10,6 @@
 - Added a `Check for updates` link in the popup that opens the latest GitHub release.
 - Updated the release workflow so GitHub Releases use the matching `CHANGELOG.md` entry as `What's new` while still attaching the packaged zip asset.
 
-**Full Changelog**: https://github.com/Grim1313/steam-promo-watch/compare/v0.2.1...v0.3.0
-
 ## 0.2.1
 
 ### What's new
