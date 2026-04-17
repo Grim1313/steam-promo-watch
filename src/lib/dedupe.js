@@ -4,6 +4,40 @@ import {
 } from "./constants.js";
 import { safeNumber } from "./utils.js";
 
+function getPromotionMatchKey(promotion) {
+  const stableId = typeof promotion?.stableId === "string" ? promotion.stableId : "";
+  const promoType = typeof promotion?.promoType === "string" ? promotion.promoType : "";
+  if (stableId && promoType) {
+    return `${stableId}|${promoType}`;
+  }
+
+  const appId = safeNumber(promotion?.appId, 0);
+  const packageId = safeNumber(promotion?.packageId, 0);
+  const numericKey = appId > 0 ? `app:${appId}` : (packageId > 0 ? `sub:${packageId}` : "");
+  return numericKey && promoType ? `${numericKey}|${promoType}` : "";
+}
+
+function findDismissedRecordEntry(dismissedMap, promotion) {
+  const sanitized = sanitizeDismissedMap(dismissedMap);
+  const exactId = typeof promotion?.id === "string" ? promotion.id : "";
+  if (exactId && sanitized[exactId]) {
+    return [exactId, sanitized[exactId]];
+  }
+
+  const targetKey = getPromotionMatchKey(promotion);
+  if (!targetKey) {
+    return null;
+  }
+
+  for (const [id, record] of Object.entries(sanitized)) {
+    if (getPromotionMatchKey(record) === targetKey) {
+      return [id, record];
+    }
+  }
+
+  return null;
+}
+
 export function sanitizeNotifiedMap(raw = {}) {
   const source = typeof raw === "object" && raw ? raw : {};
   const result = {};
@@ -31,7 +65,12 @@ export function sanitizeDismissedMap(raw = {}) {
       fingerprint: typeof value.fingerprint === "string" ? value.fingerprint : "",
       title: typeof value.title === "string" ? value.title : "",
       dismissedAt: safeNumber(value.dismissedAt, 0),
-      stableId: typeof value.stableId === "string" ? value.stableId : ""
+      stableId: typeof value.stableId === "string" ? value.stableId : "",
+      appId: safeNumber(value.appId, 0),
+      packageId: safeNumber(value.packageId, 0),
+      url: typeof value.url === "string" ? value.url : "",
+      promoType: typeof value.promoType === "string" ? value.promoType : "",
+      contentType: typeof value.contentType === "string" ? value.contentType : ""
     };
   }
   return result;
@@ -112,19 +151,56 @@ export function pruneNotifiedMap(notifiedMap, settings, nowTs) {
 }
 
 export function isPromotionDismissed(promotion, dismissedMap) {
-  const record = dismissedMap[promotion.id];
-  return Boolean(record && record.fingerprint === promotion.fingerprint);
+  return Boolean(findDismissedRecordEntry(dismissedMap, promotion));
 }
 
 export function dismissPromotionRecord(dismissedMap, promotion, nowTs) {
   const next = { ...sanitizeDismissedMap(dismissedMap) };
+  const targetKey = getPromotionMatchKey(promotion);
+  if (targetKey) {
+    for (const [id, record] of Object.entries(next)) {
+      if (getPromotionMatchKey(record) === targetKey) {
+        delete next[id];
+      }
+    }
+  }
+
   next[promotion.id] = {
     fingerprint: promotion.fingerprint,
     title: promotion.title,
     dismissedAt: nowTs,
-    stableId: promotion.stableId
+    stableId: promotion.stableId,
+    appId: promotion.appId,
+    packageId: promotion.packageId,
+    url: promotion.url,
+    promoType: promotion.promoType,
+    contentType: promotion.contentType
   };
   return pruneDismissedMap(next);
+}
+
+export function restorePromotionRecord(dismissedMap, promotionId) {
+  const next = { ...sanitizeDismissedMap(dismissedMap) };
+  const targetEntry = findDismissedRecordEntry(next, { id: promotionId });
+  if (!targetEntry) {
+    delete next[promotionId];
+    return next;
+  }
+
+  const [, record] = targetEntry;
+  const targetKey = getPromotionMatchKey(record);
+  if (!targetKey) {
+    delete next[promotionId];
+    return next;
+  }
+
+  for (const [id, currentRecord] of Object.entries(next)) {
+    if (getPromotionMatchKey(currentRecord) === targetKey) {
+      delete next[id];
+    }
+  }
+
+  return next;
 }
 
 export function pruneDismissedMap(dismissedMap) {

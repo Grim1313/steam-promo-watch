@@ -1,4 +1,5 @@
 import {
+  CONTENT_TYPES,
   ENTRY_STATUS,
   MAX_HISTORY_ITEMS,
   MAX_LATEST_ITEMS,
@@ -7,10 +8,31 @@ import {
   STORAGE_KEYS
 } from "./constants.js";
 import { readKey } from "./storage.js";
-import { daysToMs, safeArray, safeNumber, sanitizeSteamAssetUrl } from "./utils.js";
+import {
+  buildSteamUrlFromStableId,
+  daysToMs,
+  safeArray,
+  safeNumber,
+  sanitizeSteamAssetUrl,
+  sanitizeSteamReviewSummary
+} from "./utils.js";
+
+function getPromotionMatchKey(promotion) {
+  const stableId = typeof promotion?.stableId === "string" ? promotion.stableId : "";
+  const promoType = typeof promotion?.promoType === "string" ? promotion.promoType : "";
+  if (stableId && promoType) {
+    return `${stableId}|${promoType}`;
+  }
+
+  const appId = safeNumber(promotion?.appId, 0);
+  const packageId = safeNumber(promotion?.packageId, 0);
+  const numericKey = appId > 0 ? `app:${appId}` : (packageId > 0 ? `sub:${packageId}` : "");
+  return numericKey && promoType ? `${numericKey}|${promoType}` : "";
+}
 
 export function sanitizePromotionEntry(raw = {}) {
   const source = typeof raw === "object" && raw ? raw : {};
+  const reviewSummary = sanitizeSteamReviewSummary(source);
   return {
     id: typeof source.id === "string" ? source.id : "",
     fingerprint: typeof source.fingerprint === "string" ? source.fingerprint : "",
@@ -26,6 +48,7 @@ export function sanitizePromotionEntry(raw = {}) {
     capsuleImage: sanitizeSteamAssetUrl(source.capsuleImage),
     screenshotThumbnail: sanitizeSteamAssetUrl(source.screenshotThumbnail),
     screenshotFull: sanitizeSteamAssetUrl(source.screenshotFull),
+    ...reviewSummary,
     sourceId: typeof source.sourceId === "string" ? source.sourceId : "",
     sourceFingerprint: typeof source.sourceFingerprint === "string" ? source.sourceFingerprint : "",
     startsAt: safeNumber(source.startsAt, 0),
@@ -130,9 +153,9 @@ export function markEntriesRead(entries) {
   }));
 }
 
-export function dismissEntry(entries, id, nowTs) {
+export function dismissEntry(entries, id, nowTs, matchKey = "") {
   return sanitizePromotionEntries(entries).map((entry) => {
-    if (entry.id !== id) {
+    if (entry.id !== id && (!matchKey || getPromotionMatchKey(entry) !== matchKey)) {
       return entry;
     }
     return {
@@ -142,6 +165,110 @@ export function dismissEntry(entries, id, nowTs) {
       unread: false,
       lastStateChangeAt: nowTs
     };
+  });
+}
+
+export function restoreEntry(entries, id, nowTs, notifiedMap = {}, matchKey = "") {
+  const sourceNotifiedMap = typeof notifiedMap === "object" && notifiedMap ? notifiedMap : {};
+  return sanitizePromotionEntries(entries).map((entry) => {
+    if (entry.id !== id && (!matchKey || getPromotionMatchKey(entry) !== matchKey)) {
+      return entry;
+    }
+
+    const notifiedRecord = sourceNotifiedMap[entry.id];
+    const isCurrentlyActive = entry.lastSeenAt > 0 && entry.lastSeenAt === entry.lastCheckedAt;
+    return {
+      ...entry,
+      status: isCurrentlyActive ? ENTRY_STATUS.ACTIVE : ENTRY_STATUS.EXPIRED,
+      notificationStatus: notifiedRecord?.fingerprint === entry.fingerprint
+        ? NOTIFICATION_STATUS.SENT
+        : NOTIFICATION_STATUS.PENDING,
+      unread: false,
+      lastStateChangeAt: nowTs
+    };
+  });
+}
+
+export function buildIgnoredPromotionEntries(dismissedMap, latestEntries, historyEntries) {
+  const currentEntries = new Map();
+  const currentEntriesByMatchKey = new Map();
+
+  for (const entry of [
+    ...sanitizePromotionEntries(latestEntries),
+    ...sanitizePromotionEntries(historyEntries)
+  ]) {
+    if (!currentEntries.has(entry.id)) {
+      currentEntries.set(entry.id, entry);
+    }
+
+    const matchKey = getPromotionMatchKey(entry);
+    if (matchKey && !currentEntriesByMatchKey.has(matchKey)) {
+      currentEntriesByMatchKey.set(matchKey, entry);
+    }
+  }
+
+  const sourceDismissedMap = typeof dismissedMap === "object" && dismissedMap ? dismissedMap : {};
+  const ignoredEntries = new Map();
+
+  for (const [id, rawRecord] of Object.entries(sourceDismissedMap)) {
+    if (!id || typeof rawRecord !== "object" || !rawRecord) {
+      continue;
+    }
+
+    const matchKey = getPromotionMatchKey(rawRecord);
+    const entry = currentEntries.get(id) || (matchKey ? currentEntriesByMatchKey.get(matchKey) : null);
+    const stableId = entry?.stableId || (typeof rawRecord.stableId === "string" ? rawRecord.stableId : "");
+    const ignoredEntry = {
+      ...entry,
+      id,
+      title: entry?.title || (typeof rawRecord.title === "string" ? rawRecord.title : "Unknown promotion"),
+      stableId,
+      appId: entry?.appId || safeNumber(rawRecord.appId, 0),
+      packageId: entry?.packageId || safeNumber(rawRecord.packageId, 0),
+      url: entry?.url || (typeof rawRecord.url === "string" && rawRecord.url) || buildSteamUrlFromStableId(stableId),
+      promoType: entry?.promoType || (typeof rawRecord.promoType === "string" ? rawRecord.promoType : PROMO_TYPES.FREE_TO_KEEP),
+      contentType: entry?.contentType || (typeof rawRecord.contentType === "string" ? rawRecord.contentType : CONTENT_TYPES.UNKNOWN),
+      dismissedAt: safeNumber(rawRecord.dismissedAt, entry?.lastStateChangeAt || 0)
+    };
+    const ignoredKey = getPromotionMatchKey(ignoredEntry) || ignoredEntry.id;
+    const existing = ignoredEntries.get(ignoredKey);
+
+    if (!existing || ignoredEntry.dismissedAt > existing.dismissedAt) {
+      ignoredEntries.set(ignoredKey, ignoredEntry);
+    }
+  }
+
+  return Array.from(ignoredEntries.values()).sort((left, right) => right.dismissedAt - left.dismissedAt);
+}
+
+export function buildHistoryViewEntries(historyEntries, ignoredEntries) {
+  const mergedEntries = new Map();
+
+  for (const entry of sanitizePromotionEntries(historyEntries)) {
+    mergedEntries.set(getPromotionMatchKey(entry) || entry.id, entry);
+  }
+
+  for (const ignoredEntry of safeArray(ignoredEntries)) {
+    if (!ignoredEntry?.id) {
+      continue;
+    }
+
+    const mergeKey = getPromotionMatchKey(ignoredEntry) || ignoredEntry.id;
+    const existing = mergedEntries.get(mergeKey);
+    mergedEntries.set(mergeKey, sanitizePromotionEntry({
+      ...existing,
+      ...ignoredEntry,
+      status: ENTRY_STATUS.DISMISSED,
+      notificationStatus: NOTIFICATION_STATUS.DISMISSED,
+      unread: false,
+      lastStateChangeAt: safeNumber(ignoredEntry.dismissedAt, existing?.lastStateChangeAt || 0)
+    }));
+  }
+
+  return Array.from(mergedEntries.values()).sort((left, right) => {
+    const leftTs = Math.max(left.lastSeenAt, left.firstSeenAt, left.lastStateChangeAt);
+    const rightTs = Math.max(right.lastSeenAt, right.firstSeenAt, right.lastStateChangeAt);
+    return rightTs - leftTs;
   });
 }
 

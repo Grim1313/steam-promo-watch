@@ -103,6 +103,7 @@ h1 {
 }
 
 .history-entry-preview {
+  position: relative;
   display: block;
   border-radius: 12px;
   overflow: hidden;
@@ -114,6 +115,54 @@ h1 {
   width: 100%;
   aspect-ratio: 16 / 9;
   object-fit: cover;
+}
+
+.steam-review-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 82px;
+  padding: 7px 9px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(6, 14, 26, 0.28);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+.steam-review-excellent {
+  background: linear-gradient(180deg, rgba(18, 120, 77, 0.94), rgba(9, 78, 49, 0.94));
+}
+
+.steam-review-good {
+  background: linear-gradient(180deg, rgba(12, 110, 160, 0.94), rgba(10, 73, 118, 0.94));
+}
+
+.steam-review-mixed {
+  background: linear-gradient(180deg, rgba(166, 106, 18, 0.94), rgba(118, 70, 10, 0.94));
+}
+
+.steam-review-bad {
+  background: linear-gradient(180deg, rgba(158, 57, 46, 0.94), rgba(114, 35, 28, 0.94));
+}
+
+.steam-review-percent {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.steam-review-total {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .history-entry-copy {

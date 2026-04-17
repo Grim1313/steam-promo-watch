@@ -3,6 +3,7 @@ import { DEBUG, FETCH_TIMEOUT_MS, PROMO_TYPES, CONTENT_TYPES } from "./constants
 const STEAM_STORE_HOST = "store.steampowered.com";
 const STEAM_ASSET_HOST_RE = /(^|\.)steamstatic\.com$/i;
 const STEAM_CDN_ASSET_HOST = "https://cdn.cloudflare.steamstatic.com";
+const INTEGER_NUMBER_FORMATTER = new Intl.NumberFormat();
 
 export function debugLog(...args) {
   if (DEBUG) {
@@ -199,6 +200,111 @@ export function buildSteamHeaderImageUrl(appId) {
     return "";
   }
   return `${STEAM_CDN_ASSET_HOST}/steam/apps/${normalizedAppId}/header.jpg`;
+}
+
+export function sanitizeSteamReviewSummary(raw = {}) {
+  const source = typeof raw === "object" && raw ? raw : {};
+  const reviewScore = Math.max(0, safeNumber(source.reviewScore ?? source.review_score, 0));
+  const reviewScoreDesc = typeof (source.reviewScoreDesc ?? source.review_score_desc) === "string"
+    ? normalizeWhitespace(source.reviewScoreDesc ?? source.review_score_desc)
+    : "";
+  const reviewPositive = Math.max(0, safeNumber(source.reviewPositive ?? source.total_positive, 0));
+  const reviewNegative = Math.max(0, safeNumber(source.reviewNegative ?? source.total_negative, 0));
+  const reviewTotal = Math.max(
+    reviewPositive + reviewNegative,
+    safeNumber(source.reviewTotal ?? source.total_reviews, 0)
+  );
+  const explicitPercent = safeNumber(source.reviewPercent ?? source.positive_percent, -1);
+  const reviewPercent = reviewTotal > 0
+    ? clamp(Math.round((reviewPositive / reviewTotal) * 100), 0, 100)
+    : (explicitPercent >= 0 ? clamp(Math.round(explicitPercent), 0, 100) : 0);
+
+  return {
+    reviewScore,
+    reviewScoreDesc,
+    reviewPositive,
+    reviewNegative,
+    reviewTotal,
+    reviewPercent
+  };
+}
+
+export function hasSteamReviewSummary(raw = {}) {
+  return sanitizeSteamReviewSummary(raw).reviewTotal > 0;
+}
+
+export function getSteamReviewTone(raw = {}) {
+  const { reviewPercent, reviewTotal } = sanitizeSteamReviewSummary(raw);
+  if (reviewTotal <= 0) {
+    return "unknown";
+  }
+  if (reviewPercent >= 90) {
+    return "excellent";
+  }
+  if (reviewPercent >= 75) {
+    return "good";
+  }
+  if (reviewPercent >= 50) {
+    return "mixed";
+  }
+  return "bad";
+}
+
+export function formatCompactNumber(value) {
+  const normalized = Math.max(0, safeNumber(value, 0));
+  if (normalized < 1000) {
+    return String(Math.round(normalized));
+  }
+
+  const units = [
+    [1_000_000_000, "B"],
+    [1_000_000, "M"],
+    [1_000, "K"]
+  ];
+
+  for (const [threshold, suffix] of units) {
+    if (normalized >= threshold) {
+      const compact = Math.round((normalized / threshold) * 10) / 10;
+      const text = Number.isInteger(compact) ? String(compact) : compact.toFixed(1);
+      return `${text.replace(/\.0$/, "")}${suffix}`;
+    }
+  }
+
+  return String(Math.round(normalized));
+}
+
+export function formatIntegerNumber(value) {
+  return INTEGER_NUMBER_FORMATTER.format(Math.max(0, safeNumber(value, 0)));
+}
+
+export function formatSteamReviewTooltip(raw = {}) {
+  const summary = sanitizeSteamReviewSummary(raw);
+  if (summary.reviewTotal <= 0) {
+    return "";
+  }
+
+  const parts = [];
+  if (summary.reviewScoreDesc) {
+    parts.push(summary.reviewScoreDesc);
+  }
+  parts.push(`${summary.reviewPercent}% positive`);
+  parts.push(`${formatIntegerNumber(summary.reviewTotal)} Steam reviews`);
+  return parts.join(" · ");
+}
+
+export function formatSteamReviewNotificationSummary(raw = {}) {
+  const summary = sanitizeSteamReviewSummary(raw);
+  if (summary.reviewTotal <= 0) {
+    return "";
+  }
+
+  const parts = [];
+  if (summary.reviewScoreDesc) {
+    parts.push(summary.reviewScoreDesc);
+  }
+  parts.push(`${summary.reviewPercent}% positive`);
+  parts.push(`${formatCompactNumber(summary.reviewTotal)} reviews`);
+  return parts.join(" · ");
 }
 
 export function getPromotionImageUrl(promotion, options = {}) {

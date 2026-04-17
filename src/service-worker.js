@@ -1,11 +1,13 @@
 import { CHECK_ALARM_NAME, PROMO_TYPES, STORAGE_KEYS } from "./lib/constants.js";
 import { updateBadge } from "./lib/badge.js";
-import { countActivePromotions, countUnreadActive, getLatestPromotionEntries, getHistoryEntries } from "./lib/history.js";
+import { buildHistoryViewEntries, countActivePromotions, countUnreadActive, getLatestPromotionEntries, getHistoryEntries } from "./lib/history.js";
 import { clearNotificationTarget, openNotificationTarget, sendTestNotification } from "./lib/notifications.js";
 import {
   clearStoredHistory,
   dismissPromotionById,
+  getIgnoredPromotions,
   markAllPromotionsRead,
+  restorePromotionById,
   runPromotionCheck
 } from "./lib/promotions.js";
 import { getRuntimeState, setRuntimeState } from "./lib/runtime-state.js";
@@ -87,30 +89,33 @@ async function getPopupData() {
 }
 
 async function getOptionsData() {
-  const [settings, runtimeState] = await Promise.all([
+  const [settings, runtimeState, ignoredPromotions] = await Promise.all([
     getSettings(),
-    getRuntimeState()
+    getRuntimeState(),
+    getIgnoredPromotions()
   ]);
   return {
     ok: true,
     settings,
-    runtimeState
+    runtimeState,
+    ignoredPromotions
   };
 }
 
 async function getHistoryData() {
-  const [settings, runtimeState, historyEntries, latestPromotions] = await Promise.all([
+  const [settings, runtimeState, historyEntries, latestPromotions, ignoredPromotions] = await Promise.all([
     getSettings(),
     getRuntimeState(),
     getHistoryEntries(),
-    getLatestPromotionEntries()
+    getLatestPromotionEntries(),
+    getIgnoredPromotions()
   ]);
 
   return {
     ok: true,
     settings,
     runtimeState,
-    historyEntries,
+    historyEntries: buildHistoryViewEntries(historyEntries, ignoredPromotions),
     latestPromotions
   };
 }
@@ -176,6 +181,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       }
       case "DISMISS_PROMOTION": {
         const result = await dismissPromotionById(message.id);
+        const [settings, runtimeState] = await Promise.all([getSettings(), getRuntimeState()]);
+        await updateBadge(runtimeState, settings);
+        return result;
+      }
+      case "RESTORE_PROMOTION": {
+        const result = await restorePromotionById(message.id);
         const [settings, runtimeState] = await Promise.all([getSettings(), getRuntimeState()]);
         await updateBadge(runtimeState, settings);
         return result;

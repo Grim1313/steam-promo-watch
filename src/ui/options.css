@@ -86,6 +86,10 @@ h2 {
   box-shadow: 0 14px 28px rgba(27, 44, 68, 0.08);
 }
 
+.panel-wide {
+  grid-column: 1 / -1;
+}
+
 .toggle,
 label {
   display: block;
@@ -137,14 +141,68 @@ textarea {
   margin-top: 12px;
 }
 
+.actions-row {
+  flex-wrap: nowrap;
+}
+
+.actions-row .primary-button,
+.actions-row .secondary-button {
+  flex: 1 1 0;
+}
+
+.ignored-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.ignored-item {
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(21, 40, 61, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.ignored-copy {
+  min-width: 0;
+}
+
+.ignored-title {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ignored-title:hover {
+  color: var(--accent);
+}
+
+.ignored-meta {
+  margin-top: 6px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.ignored-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
 .primary-button,
 .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 0;
   border-radius: 12px;
   padding: 11px 16px;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .primary-button {
@@ -169,9 +227,17 @@ textarea {
   text-align: center;
 }
 
+.hidden {
+  display: none !important;
+}
+
 @media (max-width: 640px) {
   .page-header {
     align-items: flex-start;
+  }
+
+  .actions-row {
+    flex-wrap: wrap;
   }
 }
 

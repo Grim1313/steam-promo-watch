@@ -1,5 +1,6 @@
 import { getContentTypeLabel, getPromotionTypeLabel, getStatusLabel } from "../lib/filters.js";
 import { formatDateTime, getPromotionImageUrl } from "../lib/utils.js";
+import { buildSteamStoreAriaLabel, createSteamReviewBadge } from "./review-badge.js";
 
 const note = document.querySelector("#history-note");
 const emptyState = document.querySelector("#empty-state");
@@ -39,7 +40,7 @@ async function loadHistory() {
       preview.href = entry.url;
       preview.target = "_blank";
       preview.rel = "noreferrer";
-      preview.setAttribute("aria-label", `Open ${entry.title} on Steam`);
+      preview.setAttribute("aria-label", buildSteamStoreAriaLabel(entry.title, entry));
 
       const image = document.createElement("img");
       image.className = "history-entry-image";
@@ -48,6 +49,10 @@ async function loadHistory() {
       image.loading = "lazy";
 
       preview.append(image);
+      const reviewBadge = createSteamReviewBadge(entry);
+      if (reviewBadge) {
+        preview.append(reviewBadge);
+      }
       titleWrap.append(preview);
     }
 

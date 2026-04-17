@@ -14,12 +14,14 @@ import {
   isPromotionDismissed,
   markPromotionsNotified,
   pruneDismissedMap,
+  restorePromotionRecord,
   sanitizeDismissedMap,
   sanitizeNotifiedMap,
   shouldNotifyPromotion
 } from "./dedupe.js";
 import { applyPromotionFilters } from "./filters.js";
 import {
+  buildIgnoredPromotionEntries,
   buildLatestEntries,
   countActivePromotions,
   countUnreadActive,
@@ -27,7 +29,8 @@ import {
   getHistoryEntries,
   getLatestPromotionEntries,
   markEntriesRead,
-  mergePromotionEntries
+  mergePromotionEntries,
+  restoreEntry
 } from "./history.js";
 import { createPromotionNotifications } from "./notifications.js";
 import { fetchPromotionsFromProviders } from "./providers/index.js";
@@ -37,6 +40,15 @@ import { readKey, writeLocal } from "./storage.js";
 import { createHash, isQuietHoursActive } from "./utils.js";
 
 let activeCheckPromise = null;
+
+function getPromotionMatchKey(promotion) {
+  const stableId = typeof promotion?.stableId === "string" ? promotion.stableId : "";
+  const promoType = typeof promotion?.promoType === "string" ? promotion.promoType : "";
+  if (stableId && promoType) {
+    return `${stableId}|${promoType}`;
+  }
+  return "";
+}
 
 function dedupePromotions(promotions) {
   const map = new Map();
@@ -75,9 +87,16 @@ function buildSnapshotFingerprint(promotions) {
 }
 
 function applyDismissedState(entries, dismissedMap) {
+  const dismissedMatchKeys = new Set(
+    Object.values(dismissedMap)
+      .map((record) => getPromotionMatchKey(record))
+      .filter(Boolean)
+  );
+
   return entries.map((entry) => {
     const dismissed = dismissedMap[entry.id];
-    if (dismissed?.fingerprint === entry.fingerprint) {
+    const matchKey = getPromotionMatchKey(entry);
+    if (dismissed?.fingerprint === entry.fingerprint || (matchKey && dismissedMatchKeys.has(matchKey))) {
       return {
         ...entry,
         status: ENTRY_STATUS.DISMISSED,
@@ -293,9 +312,10 @@ export async function dismissPromotionById(promotionId) {
     return { ok: false, error: "Promotion not found." };
   }
 
+  const targetMatchKey = getPromotionMatchKey(target);
   const nextDismissedMap = dismissPromotionRecord(dismissedMap, target, nowTs);
-  const nextHistoryEntries = dismissEntry(historyEntries, promotionId, nowTs);
-  const nextLatestEntries = buildLatestEntries(dismissEntry(latestEntries, promotionId, nowTs));
+  const nextHistoryEntries = dismissEntry(historyEntries, promotionId, nowTs, targetMatchKey);
+  const nextLatestEntries = buildLatestEntries(dismissEntry(latestEntries, promotionId, nowTs, targetMatchKey));
   const unreadCount = countUnreadActive(nextLatestEntries);
   const activeFreeToKeepCount = countActivePromotions(nextLatestEntries, PROMO_TYPES.FREE_TO_KEEP);
 
@@ -307,6 +327,49 @@ export async function dismissPromotionById(promotionId) {
 
   await setRuntimeState({ unreadCount, activeFreeToKeepCount });
   return { ok: true };
+}
+
+export async function restorePromotionById(promotionId) {
+  const nowTs = Date.now();
+  const [historyEntries, latestEntries, dismissedMap, notifiedMap] = await Promise.all([
+    getHistoryEntries(),
+    getLatestPromotionEntries(),
+    readKey(STORAGE_KEYS.dismissedPromotions, {}),
+    readKey(STORAGE_KEYS.notifiedPromotions, {})
+  ]);
+
+  const sanitizedDismissedMap = sanitizeDismissedMap(dismissedMap);
+  const dismissedTarget = sanitizedDismissedMap[promotionId];
+  if (!dismissedTarget) {
+    return { ok: false, error: "Ignored promotion not found." };
+  }
+
+  const sanitizedNotifiedMap = sanitizeNotifiedMap(notifiedMap);
+  const targetMatchKey = getPromotionMatchKey(dismissedTarget);
+  const nextDismissedMap = restorePromotionRecord(sanitizedDismissedMap, promotionId);
+  const nextHistoryEntries = restoreEntry(historyEntries, promotionId, nowTs, sanitizedNotifiedMap, targetMatchKey);
+  const nextLatestEntries = buildLatestEntries(restoreEntry(latestEntries, promotionId, nowTs, sanitizedNotifiedMap, targetMatchKey));
+  const unreadCount = countUnreadActive(nextLatestEntries);
+  const activeFreeToKeepCount = countActivePromotions(nextLatestEntries, PROMO_TYPES.FREE_TO_KEEP);
+
+  await writeLocal({
+    [STORAGE_KEYS.dismissedPromotions]: nextDismissedMap,
+    [STORAGE_KEYS.history]: nextHistoryEntries,
+    [STORAGE_KEYS.latestPromotions]: nextLatestEntries
+  });
+
+  await setRuntimeState({ unreadCount, activeFreeToKeepCount });
+  return { ok: true };
+}
+
+export async function getIgnoredPromotions() {
+  const [historyEntries, latestEntries, dismissedMap] = await Promise.all([
+    getHistoryEntries(),
+    getLatestPromotionEntries(),
+    readKey(STORAGE_KEYS.dismissedPromotions, {})
+  ]);
+
+  return buildIgnoredPromotionEntries(dismissedMap, latestEntries, historyEntries);
 }
 
 export async function clearStoredHistory() {

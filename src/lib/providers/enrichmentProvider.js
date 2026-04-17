@@ -6,9 +6,17 @@ import {
   STORAGE_KEYS
 } from "../constants.js";
 import { readKey } from "../storage.js";
-import { chunkArray, fetchJsonWithTimeout, safeNumber, sanitizeSteamAssetUrl, titleLooksLikeSoundtrack } from "../utils.js";
+import {
+  chunkArray,
+  fetchJsonWithTimeout,
+  safeNumber,
+  sanitizeSteamAssetUrl,
+  sanitizeSteamReviewSummary,
+  titleLooksLikeSoundtrack
+} from "../utils.js";
 
 const APP_DETAILS_URL = "https://store.steampowered.com/api/appdetails";
+const APP_REVIEWS_URL = "https://store.steampowered.com/appreviews";
 
 export function sanitizeMetadataCache(raw = {}) {
   const source = typeof raw === "object" && raw ? raw : {};
@@ -29,6 +37,8 @@ export function sanitizeMetadataCache(raw = {}) {
       screenshotFull: sanitizeSteamAssetUrl(value.screenshotFull),
       priceInitial: safeNumber(value.priceInitial, 0),
       priceFinal: safeNumber(value.priceFinal, 0),
+      ...sanitizeSteamReviewSummary(value),
+      reviewUpdatedAt: safeNumber(value.reviewUpdatedAt, 0),
       updatedAt: safeNumber(value.updatedAt, 0)
     };
   }
@@ -58,7 +68,9 @@ async function fetchMissingMetadata(cache, appIds) {
   for (const appId of appIds) {
     const key = `app:${appId}`;
     const entry = next[key];
-    if (entry && (nowTs - entry.updatedAt) < METADATA_TTL_MS) {
+    const metadataFresh = entry && (nowTs - entry.updatedAt) < METADATA_TTL_MS;
+    const reviewsFresh = entry && entry.reviewUpdatedAt && (nowTs - entry.reviewUpdatedAt) < METADATA_TTL_MS;
+    if (metadataFresh && reviewsFresh) {
       continue;
     }
     freshIds.push(appId);
@@ -67,31 +79,52 @@ async function fetchMissingMetadata(cache, appIds) {
   // Steam currently returns HTTP 400 for batched appdetails requests with multiple appids.
   for (const batch of chunkArray(freshIds, 5)) {
     const responses = await Promise.all(batch.map(async (appId) => {
-      const url = `${APP_DETAILS_URL}?appids=${appId}&l=english&filters=basic,screenshots,price_overview,genres,categories`;
-      try {
-        const response = await fetchJsonWithTimeout(url);
-        return { appId, payload: response?.[appId] };
-      } catch {
-        return { appId, payload: null };
-      }
+      const detailsUrl = `${APP_DETAILS_URL}?appids=${appId}&l=english&filters=basic,screenshots,price_overview,genres,categories`;
+      const reviewsUrl = `${APP_REVIEWS_URL}/${appId}?json=1&language=all&review_type=all&purchase_type=steam&filter=recent&cursor=*&num_per_page=1`;
+
+      const [detailsResponse, reviewsResponse] = await Promise.all([
+        fetchJsonWithTimeout(detailsUrl).catch(() => null),
+        fetchJsonWithTimeout(reviewsUrl).catch(() => null)
+      ]);
+
+      return {
+        appId,
+        detailsPayload: detailsResponse?.[appId],
+        reviewsPayload: reviewsResponse?.query_summary || null,
+        hadReviewsResponse: Boolean(reviewsResponse && typeof reviewsResponse === "object")
+      };
     }));
 
-    for (const { appId, payload } of responses) {
-      if (!payload?.success || !payload.data) {
+    for (const { appId, detailsPayload, reviewsPayload, hadReviewsResponse } of responses) {
+      const existing = next[`app:${appId}`] || {};
+      const data = detailsPayload?.success && detailsPayload.data ? detailsPayload.data : null;
+      const reviewSummary = sanitizeSteamReviewSummary(reviewsPayload);
+
+      if (!data && !existing.updatedAt && reviewSummary.reviewTotal <= 0) {
         continue;
       }
-      const data = payload.data;
+
       next[`app:${appId}`] = {
-        title: typeof data.name === "string" ? data.name : "",
-        type: typeof data.type === "string" ? data.type : "",
-        genres: Array.isArray(data.genres) ? data.genres.map((genre) => String(genre?.description || "")) : [],
-        categories: Array.isArray(data.categories) ? data.categories.map((category) => String(category?.description || "")) : [],
-        headerImage: sanitizeSteamAssetUrl(data.header_image),
-        capsuleImage: sanitizeSteamAssetUrl(data.capsule_image),
-        screenshotThumbnail: sanitizeSteamAssetUrl(data.screenshots?.[0]?.path_thumbnail),
-        screenshotFull: sanitizeSteamAssetUrl(data.screenshots?.[0]?.path_full),
-        priceInitial: safeNumber(data.price_overview?.initial, 0),
-        priceFinal: safeNumber(data.price_overview?.final, 0),
+        ...existing,
+        title: typeof data?.name === "string" ? data.name : (existing.title || ""),
+        type: typeof data?.type === "string" ? data.type : (existing.type || ""),
+        genres: Array.isArray(data?.genres) ? data.genres.map((genre) => String(genre?.description || "")) : (existing.genres || []),
+        categories: Array.isArray(data?.categories) ? data.categories.map((category) => String(category?.description || "")) : (existing.categories || []),
+        headerImage: data ? sanitizeSteamAssetUrl(data.header_image) : (existing.headerImage || ""),
+        capsuleImage: data ? sanitizeSteamAssetUrl(data.capsule_image) : (existing.capsuleImage || ""),
+        screenshotThumbnail: data ? sanitizeSteamAssetUrl(data.screenshots?.[0]?.path_thumbnail) : (existing.screenshotThumbnail || ""),
+        screenshotFull: data ? sanitizeSteamAssetUrl(data.screenshots?.[0]?.path_full) : (existing.screenshotFull || ""),
+        priceInitial: data ? safeNumber(data.price_overview?.initial, 0) : safeNumber(existing.priceInitial, 0),
+        priceFinal: data ? safeNumber(data.price_overview?.final, 0) : safeNumber(existing.priceFinal, 0),
+        reviewScore: reviewSummary.reviewScore || safeNumber(existing.reviewScore, 0),
+        reviewScoreDesc: reviewSummary.reviewScoreDesc || existing.reviewScoreDesc || "",
+        reviewPositive: reviewSummary.reviewPositive || safeNumber(existing.reviewPositive, 0),
+        reviewNegative: reviewSummary.reviewNegative || safeNumber(existing.reviewNegative, 0),
+        reviewTotal: reviewSummary.reviewTotal || safeNumber(existing.reviewTotal, 0),
+        reviewPercent: reviewSummary.reviewTotal > 0
+          ? reviewSummary.reviewPercent
+          : safeNumber(existing.reviewPercent, 0),
+        reviewUpdatedAt: hadReviewsResponse ? nowTs : safeNumber(existing.reviewUpdatedAt, 0),
         updatedAt: nowTs
       };
     }
@@ -152,6 +185,12 @@ export async function enrichPromotions(promotions, existingCache) {
       capsuleImage: metadata?.capsuleImage || "",
       screenshotThumbnail: metadata?.screenshotThumbnail || "",
       screenshotFull: metadata?.screenshotFull || "",
+      reviewScore: safeNumber(metadata?.reviewScore, 0),
+      reviewScoreDesc: metadata?.reviewScoreDesc || "",
+      reviewPositive: safeNumber(metadata?.reviewPositive, 0),
+      reviewNegative: safeNumber(metadata?.reviewNegative, 0),
+      reviewTotal: safeNumber(metadata?.reviewTotal, 0),
+      reviewPercent: safeNumber(metadata?.reviewPercent, 0),
       contentType: inferContentType(promotion, metadataCache),
       isLikelyFreeToKeep: promotion.promoType !== "free-to-keep"
         ? true

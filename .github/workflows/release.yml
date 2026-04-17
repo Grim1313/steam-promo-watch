@@ -26,6 +26,15 @@ jobs:
           }
           "archive_path=$archivePath" >> $env:GITHUB_OUTPUT
 
+      - name: Build release notes
+        id: notes
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $notesPath = Join-Path $env:RUNNER_TEMP ("steam-promo-watch-{0}-release-notes.md" -f $version)
+          pwsh -File ./scripts/get-release-notes.ps1 -Version $version -OutputPath $notesPath
+          "notes_path=$notesPath" >> $env:GITHUB_OUTPUT
+
       - name: Create or update GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -33,10 +42,12 @@ jobs:
         run: |
           $tag = $env:GITHUB_REF_NAME
           $archivePath = "${{ steps.build.outputs.archive_path }}"
+          $notesPath = "${{ steps.notes.outputs.notes_path }}"
 
           gh release view $tag *> $null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $tag $archivePath --clobber
+            gh release edit $tag --title "Steam Promo Watch $tag" --notes-file $notesPath --latest
           } else {
-            gh release create $tag $archivePath --title "Steam Promo Watch $tag" --generate-notes
+            gh release create $tag $archivePath --title "Steam Promo Watch $tag" --notes-file $notesPath --latest
           }

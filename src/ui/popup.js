@@ -1,7 +1,9 @@
 import { getContentTypeLabel, getPromotionTypeLabel } from "../lib/filters.js";
 import { formatDateTime, formatRelativeTime, getPromotionImageUrl } from "../lib/utils.js";
 import { getPopupStatusText, getVisiblePromotions } from "./popup-state.js";
+import { buildSteamStoreAriaLabel, createSteamReviewBadge } from "./review-badge.js";
 
+const RELEASES_URL = "https://github.com/Grim1313/steam-promo-watch/releases/latest";
 const checkNowButton = document.querySelector("#check-now");
 const statusText = document.querySelector("#status-text");
 const lastSuccess = document.querySelector("#last-success");
@@ -14,8 +16,10 @@ const unreadPill = document.querySelector("#unread-pill");
 const historyLink = document.querySelector("#open-history");
 const optionsLink = document.querySelector("#open-options");
 const appVersion = document.querySelector("#app-version");
+const checkUpdatesLink = document.querySelector("#check-updates");
 
 appVersion.textContent = `Version ${chrome.runtime.getManifest().version}`;
+checkUpdatesLink.href = RELEASES_URL;
 
 async function sendMessage(type, payload = {}) {
   return chrome.runtime.sendMessage({ type, ...payload });
@@ -44,7 +48,7 @@ function renderPromotions(entries) {
       mediaLink.href = entry.url;
       mediaLink.target = "_blank";
       mediaLink.rel = "noreferrer";
-      mediaLink.setAttribute("aria-label", `Open ${entry.title} on Steam`);
+      mediaLink.setAttribute("aria-label", buildSteamStoreAriaLabel(entry.title, entry));
 
       const image = document.createElement("img");
       image.className = "promotion-image";
@@ -53,6 +57,10 @@ function renderPromotions(entries) {
       image.loading = "lazy";
 
       mediaLink.append(image);
+      const reviewBadge = createSteamReviewBadge(entry);
+      if (reviewBadge) {
+        mediaLink.append(reviewBadge);
+      }
       item.append(mediaLink);
     }
 
@@ -72,8 +80,13 @@ function renderPromotions(entries) {
     dismiss.textContent = "Ignore";
     dismiss.addEventListener("click", async () => {
       dismiss.disabled = true;
-      await sendMessage("DISMISS_PROMOTION", { id: entry.id });
-      await refresh();
+      const response = await sendMessage("DISMISS_PROMOTION", { id: entry.id });
+      if (!response?.ok) {
+        dismiss.disabled = false;
+        renderWarning(response?.error || "Failed to ignore promotion.");
+        return;
+      }
+      await refresh("Promotion ignored. Restore it from Settings > Ignored promotions.");
     });
 
     head.append(title, dismiss);
@@ -120,7 +133,7 @@ function renderStatus(runtimeState) {
   checkNowButton.disabled = runtimeState.checkInProgress;
 }
 
-async function refresh() {
+async function refresh(temporaryWarning = "") {
   const response = await sendMessage("GET_POPUP_DATA");
   if (!response?.ok) {
     renderWarning(response?.error || "Unable to load popup data.");
@@ -130,7 +143,7 @@ async function refresh() {
   renderStatus(response.runtimeState);
   renderPromotions(response.latestPromotions || []);
 
-  const warning = response.runtimeState.lastErrorMessage || response.runtimeState.lastProviderSummary;
+  const warning = temporaryWarning || response.runtimeState.lastErrorMessage || response.runtimeState.lastProviderSummary;
   renderWarning(warning);
 
   const unreadCount = Number(response.runtimeState.unreadCount) || 0;

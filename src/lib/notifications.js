@@ -7,7 +7,13 @@ import {
   STORAGE_KEYS
 } from "./constants.js";
 import { readKey, writeLocal } from "./storage.js";
-import { buildSteamHeaderImageUrl, buildSteamUrlFromStableId, getPromotionImageUrl, sanitizeSteamUrl } from "./utils.js";
+import {
+  buildSteamHeaderImageUrl,
+  buildSteamUrlFromStableId,
+  formatSteamReviewNotificationSummary,
+  getPromotionImageUrl,
+  sanitizeSteamUrl
+} from "./utils.js";
 import { getPromotionTypeLabel } from "./filters.js";
 
 function getNotificationIconUrl() {
@@ -52,6 +58,7 @@ export async function createPromotionNotifications(promotions) {
   for (const promotion of limited) {
     const notificationId = `${NOTIFICATION_PREFIX}:${promotion.id}:${nowTs}`;
     const imageUrl = getPromotionImageUrl(promotion, { preferScreenshot: false });
+    const reviewSummary = formatSteamReviewNotificationSummary(promotion);
     const options = {
       type: imageUrl ? "image" : "basic",
       iconUrl: getNotificationIconUrl(),
@@ -63,6 +70,9 @@ export async function createPromotionNotifications(promotions) {
 
     if (imageUrl) {
       options.imageUrl = imageUrl;
+    }
+    if (reviewSummary) {
+      options.contextMessage = reviewSummary;
     }
 
     await chrome.notifications.create(notificationId, options);
@@ -121,6 +131,12 @@ export async function sendTestNotification() {
     appId: 599140,
     title: "Test notification: Graveyard Keeper",
     promoType: "free-to-keep",
+    reviewScore: 8,
+    reviewScoreDesc: "Very Positive",
+    reviewPositive: 42320,
+    reviewNegative: 7033,
+    reviewTotal: 49353,
+    reviewPercent: 86,
     headerImage: buildSteamHeaderImageUrl(599140),
     capsuleImage: "",
     screenshotThumbnail: "",

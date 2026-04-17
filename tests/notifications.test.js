@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createPromotionNotifications } from "../src/lib/notifications.js";
+import { createPromotionNotifications, sendTestNotification } from "../src/lib/notifications.js";
 import { STORAGE_KEYS } from "../src/lib/constants.js";
 
 function createChromeMock() {
@@ -48,6 +48,11 @@ test("createPromotionNotifications uses image notifications when artwork is avai
     stableId: "app:599140",
     title: "Graveyard Keeper",
     promoType: "free-to-keep",
+    reviewScoreDesc: "Very Positive",
+    reviewPositive: 42320,
+    reviewNegative: 7033,
+    reviewTotal: 49353,
+    reviewPercent: 86,
     url: "https://store.steampowered.com/app/599140/Graveyard_Keeper/",
     screenshotFull: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/599140/shot_1920.jpg",
     screenshotThumbnail: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/599140/shot_600.jpg",
@@ -57,6 +62,19 @@ test("createPromotionNotifications uses image notifications when artwork is avai
 
   assert.equal(notificationCalls.length, 1);
   assert.equal(notificationCalls[0][1].type, "image");
-  assert.equal(notificationCalls[0][1].imageUrl, "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/599140/shot_1920.jpg");
+  assert.equal(notificationCalls[0][1].imageUrl, "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/599140/header.jpg");
+  assert.equal(notificationCalls[0][1].contextMessage, "Very Positive · 86% positive · 49.4K reviews");
   assert.ok(storageState[STORAGE_KEYS.notificationLinks]);
+});
+
+test("sendTestNotification includes review summary text", async (t) => {
+  const { notificationCalls } = createChromeMock();
+  t.after(() => {
+    delete globalThis.chrome;
+  });
+
+  await sendTestNotification();
+
+  assert.equal(notificationCalls.length, 1);
+  assert.equal(notificationCalls[0][1].contextMessage, "Very Positive · 86% positive · 49.4K reviews");
 });

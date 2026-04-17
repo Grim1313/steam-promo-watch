@@ -97,13 +97,18 @@
           </div>
         </section>
 
-        <section class="panel">
+        <section id="ignored-promotions-panel" class="panel">
+          <h2>Ignored promotions</h2>
+          <p id="ignored-promotions-note" class="note">Ignored titles stay here until you restore them.</p>
+          <div id="ignored-promotions-empty" class="note">No ignored promotions.</div>
+          <div id="ignored-promotions-list" class="ignored-list hidden"></div>
+        </section>
+
+        <section class="panel panel-wide">
           <h2>Actions</h2>
-          <div class="button-row">
+          <div class="button-row actions-row">
             <button type="submit" class="primary-button">Save settings</button>
             <button type="button" id="test-notification" class="secondary-button">Send test notification</button>
-          </div>
-          <div class="button-row">
             <button type="button" id="clear-history" class="secondary-button danger-button">Clear history</button>
             <button type="button" id="reset-settings" class="secondary-button">Reset settings</button>
           </div>

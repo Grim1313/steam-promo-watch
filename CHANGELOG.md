@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0
+
+### What's new
+
+- Added an `Ignored promotions` section in Settings so ignored titles stay visible, can be opened on Steam, and can be restored without clearing all local data.
+- Improved ignore/restore matching so the same Steam promotion stays ignored even when it appears from another provider or source entry.
+- Added Steam user review badges to popup and history cards, plus review summary text in notifications when review data is available.
+- Added a `Check for updates` link in the popup that opens the latest GitHub release.
+- Updated the release workflow so GitHub Releases use the matching `CHANGELOG.md` entry as `What's new` while still attaching the packaged zip asset.
+
+**Full Changelog**: https://github.com/Grim1313/steam-promo-watch/compare/v0.2.1...v0.3.0
+
 ## 0.2.1
 
 ### What's new
@@ -20,7 +32,7 @@
 
 ## 0.1.0
 
-## What's new
+### What's new
 
 - Initial release
 

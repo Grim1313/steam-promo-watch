@@ -1,8 +1,14 @@
+import { getContentTypeLabel, getPromotionTypeLabel } from "../lib/filters.js";
+import { formatDateTime } from "../lib/utils.js";
+
 const form = document.querySelector("#settings-form");
 const statusLine = document.querySelector("#form-status");
 const testButton = document.querySelector("#test-notification");
 const clearHistoryButton = document.querySelector("#clear-history");
 const resetSettingsButton = document.querySelector("#reset-settings");
+const ignoredNote = document.querySelector("#ignored-promotions-note");
+const ignoredEmpty = document.querySelector("#ignored-promotions-empty");
+const ignoredList = document.querySelector("#ignored-promotions-list");
 const appVersion = document.querySelector("#app-version");
 const STATUS_VARIANTS = Object.freeze({
   neutral: "neutral",
@@ -73,6 +79,73 @@ function fillForm(settings) {
   field("blockedKeywords").value = settings.filters.blockedKeywords.join("\n");
 }
 
+function renderIgnoredPromotions(entries) {
+  const ignoredEntries = Array.isArray(entries) ? entries : [];
+  ignoredList.textContent = "";
+  ignoredList.classList.toggle("hidden", ignoredEntries.length === 0);
+  ignoredEmpty.classList.toggle("hidden", ignoredEntries.length > 0);
+  ignoredNote.textContent = ignoredEntries.length > 0
+    ? `${ignoredEntries.length} promotion(s) are currently ignored. Restore any title to make it visible again.`
+    : "Ignored titles stay here until you restore them.";
+
+  for (const entry of ignoredEntries) {
+    const item = document.createElement("article");
+    item.className = "ignored-item";
+
+    const copy = document.createElement("div");
+    copy.className = "ignored-copy";
+
+    const title = document.createElement("a");
+    title.className = "ignored-title";
+    title.href = entry.url;
+    title.target = "_blank";
+    title.rel = "noreferrer";
+    title.textContent = entry.title;
+
+    const meta = document.createElement("div");
+    meta.className = "ignored-meta";
+    meta.textContent = `${getPromotionTypeLabel(entry.promoType)} • ${getContentTypeLabel(entry.contentType)} • Ignored ${formatDateTime(entry.dismissedAt)}`;
+
+    const actions = document.createElement("div");
+    actions.className = "ignored-actions";
+
+    const restoreButton = document.createElement("button");
+    restoreButton.type = "button";
+    restoreButton.className = "secondary-button";
+    restoreButton.textContent = "Restore";
+    restoreButton.addEventListener("click", async () => {
+      restoreButton.disabled = true;
+      setStatus(`Restoring ${entry.title}...`);
+      try {
+        const response = await sendMessage("RESTORE_PROMOTION", { id: entry.id });
+        if (!response?.ok) {
+          setStatus(response?.error || "Failed to restore promotion.", STATUS_VARIANTS.error);
+          restoreButton.disabled = false;
+          return;
+        }
+
+        renderIgnoredPromotions(ignoredEntries.filter((ignoredEntry) => ignoredEntry.id !== entry.id));
+        setStatus(`${entry.title} restored.`, STATUS_VARIANTS.success);
+      } catch (error) {
+        setStatus(error instanceof Error ? error.message : "Failed to restore promotion.", STATUS_VARIANTS.error);
+        restoreButton.disabled = false;
+      }
+    });
+
+    const openLink = document.createElement("a");
+    openLink.className = "secondary-button";
+    openLink.href = entry.url;
+    openLink.target = "_blank";
+    openLink.rel = "noreferrer";
+    openLink.textContent = "Open on Steam";
+
+    actions.append(restoreButton, openLink);
+    copy.append(title, meta, actions);
+    item.append(copy);
+    ignoredList.append(item);
+  }
+}
+
 function collectSettings() {
   return {
     notificationsEnabled: field("notificationsEnabled").checked,
@@ -105,6 +178,7 @@ async function loadSettings() {
     return;
   }
   fillForm(response.settings);
+  renderIgnoredPromotions(response.ignoredPromotions || []);
   setStatus(
     response.runtimeState.lastErrorMessage || "Settings loaded.",
     response.runtimeState.lastErrorMessage ? STATUS_VARIANTS.error : STATUS_VARIANTS.success
