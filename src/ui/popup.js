@@ -158,11 +158,21 @@ async function refresh(temporaryWarning = "") {
 checkNowButton.addEventListener("click", async () => {
   checkNowButton.disabled = true;
   statusText.textContent = "Checking now...";
-  const response = await sendMessage("CHECK_NOW");
-  if (!response?.ok) {
-    renderWarning(response?.error || "Manual check failed.");
+  try {
+    const response = await sendMessage("CHECK_NOW");
+    if (!response?.ok) {
+      renderWarning(response?.error || "Manual check failed.");
+    }
+  } catch (error) {
+    renderWarning(error instanceof Error ? error.message : "Manual check failed.");
+  } finally {
+    try {
+      await refresh();
+    } catch (error) {
+      checkNowButton.disabled = false;
+      renderWarning(error instanceof Error ? error.message : String(error));
+    }
   }
-  await refresh();
 });
 
 optionsLink.addEventListener("click", async (event) => {

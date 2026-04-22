@@ -7,6 +7,7 @@ import {
   dismissPromotionById,
   getIgnoredPromotions,
   markAllPromotionsRead,
+  recoverInterruptedCheckState,
   restorePromotionById,
   runPromotionCheck
 } from "./lib/promotions.js";
@@ -23,7 +24,7 @@ import {
 async function bootstrap() {
   await ensureSchemaVersion();
   const settings = await getSettings();
-  const runtimeState = await getRuntimeState();
+  const runtimeState = await recoverInterruptedCheckState();
 
   const [historyEntries, latestPromotions] = await Promise.all([
     getHistoryEntries(),
@@ -77,7 +78,7 @@ async function runAndReschedule(trigger) {
 async function getPopupData() {
   const [settings, runtimeState, latestPromotions] = await Promise.all([
     getSettings(),
-    getRuntimeState(),
+    recoverInterruptedCheckState(),
     getLatestPromotionEntries()
   ]);
   return {
@@ -91,7 +92,7 @@ async function getPopupData() {
 async function getOptionsData() {
   const [settings, runtimeState, ignoredPromotions] = await Promise.all([
     getSettings(),
-    getRuntimeState(),
+    recoverInterruptedCheckState(),
     getIgnoredPromotions()
   ]);
   return {
@@ -105,7 +106,7 @@ async function getOptionsData() {
 async function getHistoryData() {
   const [settings, runtimeState, historyEntries, latestPromotions, ignoredPromotions] = await Promise.all([
     getSettings(),
-    getRuntimeState(),
+    recoverInterruptedCheckState(),
     getHistoryEntries(),
     getLatestPromotionEntries(),
     getIgnoredPromotions()

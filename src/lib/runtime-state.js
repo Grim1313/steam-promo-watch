@@ -2,6 +2,8 @@ import { STORAGE_KEYS } from "./constants.js";
 import { readKey, writeLocal } from "./storage.js";
 import { clamp, safeNumber } from "./utils.js";
 
+export const INTERRUPTED_CHECK_MESSAGE = "Previous check was interrupted. Run Check now again.";
+
 export const DEFAULT_RUNTIME_STATE = Object.freeze({
   checkInProgress: false,
   lastCheckStartedAt: 0,
@@ -39,6 +41,21 @@ export function sanitizeRuntimeState(raw = {}) {
     pendingQuietCount: clamp(safeNumber(source.pendingQuietCount, 0), 0, 999),
     lastTrigger: typeof source.lastTrigger === "string" ? source.lastTrigger : ""
   };
+}
+
+export function buildRecoveredRuntimeState(raw = {}, nowTs = Date.now()) {
+  const runtimeState = sanitizeRuntimeState(raw);
+  if (!runtimeState.checkInProgress) {
+    return runtimeState;
+  }
+
+  return sanitizeRuntimeState({
+    ...runtimeState,
+    checkInProgress: false,
+    lastCheckFinishedAt: Math.max(runtimeState.lastCheckFinishedAt, safeNumber(nowTs, 0)),
+    lastCheckOutcome: "error",
+    lastErrorMessage: runtimeState.lastErrorMessage || INTERRUPTED_CHECK_MESSAGE
+  });
 }
 
 export async function getRuntimeState() {

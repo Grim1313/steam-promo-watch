@@ -34,12 +34,27 @@ import {
 } from "./history.js";
 import { createPromotionNotifications } from "./notifications.js";
 import { fetchPromotionsFromProviders } from "./providers/index.js";
-import { getRuntimeState, setRuntimeState } from "./runtime-state.js";
+import { buildRecoveredRuntimeState, getRuntimeState, setRuntimeState } from "./runtime-state.js";
 import { getSettings } from "./settings.js";
 import { readKey, writeLocal } from "./storage.js";
 import { createHash, isQuietHoursActive } from "./utils.js";
 
 let activeCheckPromise = null;
+
+export async function recoverInterruptedCheckState(nowTs = Date.now()) {
+  if (activeCheckPromise) {
+    return getRuntimeState();
+  }
+
+  const runtimeState = await getRuntimeState();
+  if (!runtimeState.checkInProgress) {
+    return runtimeState;
+  }
+
+  const recoveredState = buildRecoveredRuntimeState(runtimeState, nowTs);
+  await writeLocal({ [STORAGE_KEYS.runtimeState]: recoveredState });
+  return recoveredState;
+}
 
 function getPromotionMatchKey(promotion) {
   const stableId = typeof promotion?.stableId === "string" ? promotion.stableId : "";
