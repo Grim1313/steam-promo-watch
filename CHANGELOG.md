@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1
+
+### What's new
+
+- Fixed an issue where the popup could get stuck on `Checking now...` and keep `Check now` blocked after an interrupted check.
+
 ## 0.3.0
 
 ### What's new
@@ -33,4 +39,3 @@
 ### What's new
 
 - Initial release
-
