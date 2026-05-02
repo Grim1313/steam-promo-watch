@@ -176,3 +176,77 @@ test("enrichPromotions backfills reviews for fresh cached metadata created befor
   assert.equal(result.promotions[0].reviewPercent, 86);
   assert.ok(result.metadataCache["app:599140"].reviewUpdatedAt > 0);
 });
+
+test("enrichPromotions confirms 100 percent appdetails discounts with non-zero numeric final price", async (t) => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (url) => {
+    if (url.includes("/api/appdetails?")) {
+      return {
+        ok: true,
+        async json() {
+          return {
+            3550490: {
+              success: true,
+              data: {
+                name: "Overcome Your Fears - Caretaker",
+                type: "game",
+                genres: [{ description: "Adventure" }],
+                categories: [{ description: "Single-player" }],
+                header_image: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3550490/header.jpg",
+                capsule_image: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/3550490/capsule.jpg",
+                screenshots: [],
+                price_overview: {
+                  initial: 599,
+                  final: 599,
+                  discount_percent: 100,
+                  final_formatted: "Free"
+                }
+              }
+            }
+          };
+        }
+      };
+    }
+
+    if (url.includes("/appreviews/3550490?")) {
+      return {
+        ok: true,
+        async json() {
+          return {
+            success: 1,
+            query_summary: {
+              review_score: 6,
+              review_score_desc: "Mostly Positive",
+              total_positive: 108,
+              total_negative: 32,
+              total_reviews: 140
+            }
+          };
+        }
+      };
+    }
+
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const result = await enrichPromotions([
+    {
+      id: "app:3550490|free-to-keep|metadata-only",
+      stableId: "app:3550490",
+      appId: 3550490,
+      title: "",
+      promoType: "free-to-keep",
+      sourceId: "metadata-only"
+    }
+  ], {});
+
+  assert.equal(result.promotions.length, 1);
+  assert.equal(result.promotions[0].isLikelyFreeToKeep, true);
+  assert.equal(result.metadataCache["app:3550490"].priceDiscountPercent, 100);
+  assert.equal(result.metadataCache["app:3550490"].priceFinalFormatted, "Free");
+});

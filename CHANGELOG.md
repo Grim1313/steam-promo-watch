@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2
+
+### What's new
+
+- Improved Steam promotion discovery so current free-to-keep offers are found more reliably.
+- The popup now prioritizes full games before other content types, making the main list easier to scan.
+
 ## 0.3.1
 
 ### What's new

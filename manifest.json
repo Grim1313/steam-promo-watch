@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Steam Promo Watch",
   "description": "Tracks new Steam free-to-keep promotions and notifies you about new giveaways.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "minimum_chrome_version": "120",
   "permissions": [
     "alarms",

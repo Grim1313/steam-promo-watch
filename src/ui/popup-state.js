@@ -1,6 +1,13 @@
+import { CONTENT_TYPES } from "../lib/constants.js";
+
+function getPopupContentPriority(entry) {
+  return entry?.contentType === CONTENT_TYPES.GAME ? 0 : 1;
+}
+
 export function getVisiblePromotions(entries, maxItems = 10) {
   return (Array.isArray(entries) ? entries : [])
     .filter((entry) => entry?.status === "active")
+    .sort((left, right) => getPopupContentPriority(left) - getPopupContentPriority(right))
     .slice(0, maxItems);
 }
 

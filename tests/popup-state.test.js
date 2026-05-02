@@ -17,6 +17,21 @@ test("getVisiblePromotions keeps only active entries for the popup", () => {
   );
 });
 
+test("getVisiblePromotions shows games before other content types", () => {
+  const visible = getVisiblePromotions([
+    { id: "dlc-1", status: "active", contentType: "dlc" },
+    { id: "package-1", status: "active", contentType: "package" },
+    { id: "game-1", status: "active", contentType: "game" },
+    { id: "game-2", status: "active", contentType: "game" },
+    { id: "demo-1", status: "active", contentType: "demo" }
+  ], 3);
+
+  assert.deepEqual(
+    visible.map((entry) => entry.id),
+    ["game-1", "game-2", "dlc-1"]
+  );
+});
+
 test("getPopupStatusText reports when no new free promotions were found", () => {
   assert.equal(
     getPopupStatusText({ lastCheckOutcome: "success", lastResultCount: 0 }),

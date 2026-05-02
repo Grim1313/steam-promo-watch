@@ -37,6 +37,8 @@ export function sanitizeMetadataCache(raw = {}) {
       screenshotFull: sanitizeSteamAssetUrl(value.screenshotFull),
       priceInitial: safeNumber(value.priceInitial, 0),
       priceFinal: safeNumber(value.priceFinal, 0),
+      priceDiscountPercent: safeNumber(value.priceDiscountPercent, 0),
+      priceFinalFormatted: typeof value.priceFinalFormatted === "string" ? value.priceFinalFormatted : "",
       ...sanitizeSteamReviewSummary(value),
       reviewUpdatedAt: safeNumber(value.reviewUpdatedAt, 0),
       updatedAt: safeNumber(value.updatedAt, 0)
@@ -116,6 +118,10 @@ async function fetchMissingMetadata(cache, appIds) {
         screenshotFull: data ? sanitizeSteamAssetUrl(data.screenshots?.[0]?.path_full) : (existing.screenshotFull || ""),
         priceInitial: data ? safeNumber(data.price_overview?.initial, 0) : safeNumber(existing.priceInitial, 0),
         priceFinal: data ? safeNumber(data.price_overview?.final, 0) : safeNumber(existing.priceFinal, 0),
+        priceDiscountPercent: data ? safeNumber(data.price_overview?.discount_percent, 0) : safeNumber(existing.priceDiscountPercent, 0),
+        priceFinalFormatted: data && typeof data.price_overview?.final_formatted === "string"
+          ? data.price_overview.final_formatted
+          : (existing.priceFinalFormatted || ""),
         reviewScore: reviewSummary.reviewScore || safeNumber(existing.reviewScore, 0),
         reviewScoreDesc: reviewSummary.reviewScoreDesc || existing.reviewScoreDesc || "",
         reviewPositive: reviewSummary.reviewPositive || safeNumber(existing.reviewPositive, 0),
@@ -175,8 +181,11 @@ export async function enrichPromotions(promotions, existingCache) {
     const metadata = metadataCache[promotion.stableId];
     const priceInitial = safeNumber(metadata?.priceInitial, -1);
     const priceFinal = safeNumber(metadata?.priceFinal, -1);
-    // Steam appdetails may report final_formatted="Free" while keeping a non-zero numeric final price.
-    const metadataConfirmedFreeToKeep = priceInitial < 0 ? true : (priceInitial > 0 && priceFinal === 0);
+    const priceDiscountPercent = safeNumber(metadata?.priceDiscountPercent, 0);
+    const priceFinalFormatted = String(metadata?.priceFinalFormatted || "");
+    const metadataConfirmedFreeToKeep = priceInitial < 0
+      ? true
+      : (priceInitial > 0 && (priceFinal === 0 || priceDiscountPercent >= 100 || /\bfree\b/i.test(priceFinalFormatted)));
 
     return {
       ...promotion,
