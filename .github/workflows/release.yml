@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.3.3"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,6 +21,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: Build release archive
         id: build
@@ -29,25 +37,37 @@ jobs:
       - name: Build release notes
         id: notes
         shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
-          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          $version = $env:RELEASE_TAG -replace '^v', ''
           $notesPath = Join-Path $env:RUNNER_TEMP ("steam-promo-watch-{0}-release-notes.md" -f $version)
           pwsh -File ./scripts/get-release-notes.ps1 -Version $version -OutputPath $notesPath
           "notes_path=$notesPath" >> $env:GITHUB_OUTPUT
 
       - name: Create or update GitHub release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         shell: pwsh
         run: |
-          $tag = $env:GITHUB_REF_NAME
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+
+          $tag = $env:RELEASE_TAG
           $archivePath = "${{ steps.build.outputs.archive_path }}"
           $notesPath = "${{ steps.notes.outputs.notes_path }}"
 
+          $PSNativeCommandUseErrorActionPreference = $false
           gh release view $tag *> $null
-          if ($LASTEXITCODE -eq 0) {
+          $releaseViewExitCode = $LASTEXITCODE
+          $PSNativeCommandUseErrorActionPreference = $true
+
+          if ($releaseViewExitCode -eq 0) {
             gh release upload $tag $archivePath --clobber
             gh release edit $tag --title "Steam Promo Watch $tag" --notes-file $notesPath --latest
+          } elseif ($releaseViewExitCode -eq 1) {
+            gh release create $tag $archivePath --title "Steam Promo Watch $tag" --notes-file $notesPath --latest --verify-tag
           } else {
-            gh release create $tag $archivePath --title "Steam Promo Watch $tag" --notes-file $notesPath --latest
+            throw "gh release view failed with exit code $releaseViewExitCode"
           }
