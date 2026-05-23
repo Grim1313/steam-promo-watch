@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3
+
+### What's new
+
+- Removed the unnecessary `tabs` permission from the Chrome extension manifest for Chrome Web Store compliance.
+
 ## 0.3.2
 
 ### What's new

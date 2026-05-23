@@ -2,13 +2,12 @@
   "manifest_version": 3,
   "name": "Steam Promo Watch",
   "description": "Tracks new Steam free-to-keep promotions and notifies you about new giveaways.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "minimum_chrome_version": "120",
   "permissions": [
     "alarms",
     "notifications",
-    "storage",
-    "tabs"
+    "storage"
   ],
   "host_permissions": [
     "https://store.steampowered.com/*",
