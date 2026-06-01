@@ -61,6 +61,14 @@ It does not currently track temporary free play events such as `Free Weekend` or
 
 ## How to install in Chrome
 
+There are two installation methods.
+
+### Method 1: Chrome Web Store installation:
+
+Follow [this link](https://chromewebstore.google.com/detail/steam-promo-watch/aahjgnocdbhipkfcmhkhlkneonhkafji) and click "Add to Chrome" button.
+
+### Method 2: Manual installation:
+
 1. Open the repository's `Releases` page on GitHub.
 2. Download the asset `steam-promo-watch-<version>.zip`.
 3. Extract the archive to a local folder.
@@ -74,7 +82,7 @@ Do not use GitHub's auto-generated `Source code (zip)` archive for installation.
 
 For Microsoft Edge, use the same steps on `edge://extensions/`.
 
-## How to update extension
+## How to update an extension if it was installed manually
 
 1. Open the repository's `Releases` page on GitHub.
 2. Download the new asset `steam-promo-watch-<version>.zip`.
