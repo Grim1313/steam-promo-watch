@@ -5,8 +5,6 @@
 ### What's new
 
 - Added promotion end-time detection so the popup and notifications can show when a Free to Keep offer ends.
-- Updated the Chrome Web Store package name to `Steam Promo Watch: Free Game Alerts`.
-- Updated the Chrome Web Store package summary to clarify limited-time free games, giveaway alerts, and no Steam login requirement.
 
 ## 0.3.3
 
