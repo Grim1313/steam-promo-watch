@@ -106,6 +106,23 @@ export function formatRelativeTime(timestamp) {
   return rtf.format(Math.round(diff / day), "day");
 }
 
+export function formatPromotionDeadline(timestamp) {
+  const normalized = safeNumber(timestamp, 0);
+  if (!normalized) {
+    return "";
+  }
+  return `Ends ${formatDateTime(normalized)} (${formatRelativeTime(normalized)})`;
+}
+
+export function formatPromotionDeadlineStatus(timestamp, checkedAt = 0) {
+  const deadline = formatPromotionDeadline(timestamp);
+  if (deadline) {
+    return deadline;
+  }
+  const checked = safeNumber(checkedAt, 0);
+  return checked ? `End time unavailable · Last checked ${formatDateTime(checked)}` : "End time unavailable";
+}
+
 export function parseTimeString(value) {
   const match = /^(\d{2}):(\d{2})$/.exec(String(value || ""));
   if (!match) {

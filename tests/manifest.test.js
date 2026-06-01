@@ -4,8 +4,17 @@ import { readFile } from "node:fs/promises";
 
 const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
 
-test("manifest version is prepared for the 0.3.3 release", () => {
-  assert.equal(manifest.version, "0.3.3");
+test("manifest version is prepared for the 0.4.0 release", () => {
+  assert.equal(manifest.version, "0.4.0");
+});
+
+test("manifest uses the Chrome Web Store release name and summary", () => {
+  assert.equal(manifest.name, "Steam Promo Watch: Free Game Alerts");
+  assert.equal(
+    manifest.description,
+    "Find limited-time free Steam games and get giveaway alerts. No Steam login required."
+  );
+  assert.equal(manifest.action.default_title, "Steam Promo Watch: Free Game Alerts");
 });
 
 test("manifest does not request the tabs permission", () => {

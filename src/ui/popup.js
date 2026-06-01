@@ -1,5 +1,5 @@
 import { getContentTypeLabel, getPromotionTypeLabel } from "../lib/filters.js";
-import { formatDateTime, formatRelativeTime, getPromotionImageUrl } from "../lib/utils.js";
+import { formatDateTime, formatPromotionDeadlineStatus, formatRelativeTime, getPromotionImageUrl } from "../lib/utils.js";
 import { getPopupStatusText, getVisiblePromotions } from "./popup-state.js";
 import { buildSteamStoreAriaLabel, createSteamReviewBadge } from "./review-badge.js";
 
@@ -115,8 +115,8 @@ function renderPromotions(entries) {
     seenLine.textContent = `Seen ${formatRelativeTime(entry.firstSeenAt)}`;
 
     const endLine = document.createElement("div");
-    endLine.className = "meta-line";
-    endLine.textContent = entry.endsAt ? `Ends ${formatDateTime(entry.endsAt)}` : `Last checked ${formatDateTime(entry.lastCheckedAt)}`;
+    endLine.className = entry.endsAt ? "meta-line deadline-line" : "meta-line";
+    endLine.textContent = formatPromotionDeadlineStatus(entry.endsAt, entry.lastCheckedAt);
 
     stack.append(tags, seenLine, endLine);
     meta.append(stack);

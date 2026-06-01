@@ -1,10 +1,63 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { enrichPromotions } from "../src/lib/providers/enrichmentProvider.js";
+import {
+  enrichPromotions,
+  extractSteamFreeToKeepEndsAtFromHtml,
+  parseSteamFreeToKeepEndsAt
+} from "../src/lib/providers/enrichmentProvider.js";
+import { PROMOTION_DEADLINE_TTL_MS } from "../src/lib/constants.js";
+
+test("extractSteamFreeToKeepEndsAtFromHtml parses Steam free-to-keep purchase text", () => {
+  const nowTs = Date.UTC(2026, 5, 1, 16, 0);
+  const expectedTs = Date.UTC(2026, 5, 1, 17, 0);
+  const html = `
+    <p class="game_purchase_discount_quantity ">
+      Free to keep when you get it before Jun 1 @ 10:00am.
+      Some limitations apply.
+    </p>
+  `;
+
+  assert.equal(extractSteamFreeToKeepEndsAtFromHtml(html, nowTs), expectedTs);
+});
+
+test("extractSteamFreeToKeepEndsAtFromHtml can parse deadline text outside the purchase class", () => {
+  const nowTs = Date.UTC(2026, 5, 1, 16, 0);
+  const expectedTs = Date.UTC(2026, 5, 1, 17, 0);
+
+  assert.equal(
+    extractSteamFreeToKeepEndsAtFromHtml("Free to keep when you get it before Jun 1 @ 10:00am.", nowTs),
+    expectedTs
+  );
+});
+
+test("extractSteamFreeToKeepEndsAtFromHtml can parse escaped Steam script text", () => {
+  const nowTs = Date.UTC(2026, 5, 1, 16, 0);
+  const expectedTs = Date.UTC(2026, 5, 1, 17, 0);
+
+  assert.equal(
+    extractSteamFreeToKeepEndsAtFromHtml("Free to keep when you get it before Jun 1 @ 10:00am. Some <\\/span> text", nowTs),
+    expectedTs
+  );
+});
+
+test("parseSteamFreeToKeepEndsAt rolls no-year January deadlines into the next year", () => {
+  const nowTs = Date.UTC(2026, 11, 31, 20, 0);
+  const expectedTs = Date.UTC(2027, 0, 2, 18, 0);
+
+  assert.equal(
+    parseSteamFreeToKeepEndsAt("Free to keep when you get it before Jan 2 @ 10:00am.", nowTs),
+    expectedTs
+  );
+});
 
 test("enrichPromotions adds Steam review summary fields from appreviews", async (t) => {
   const originalFetch = globalThis.fetch;
+  const originalNow = Date.now;
+  const nowTs = Date.UTC(2026, 0, 1, 16, 0);
+  const endsAt = Date.UTC(2026, 0, 1, 18, 0);
+
+  Date.now = () => nowTs;
 
   globalThis.fetch = async (url) => {
     if (url.includes("/api/appdetails?")) {
@@ -56,10 +109,20 @@ test("enrichPromotions adds Steam review summary fields from appreviews", async 
       };
     }
 
+    if (url.includes("/app/599140/")) {
+      return {
+        ok: true,
+        async text() {
+          return '<p class="game_purchase_discount_quantity ">Free to keep when you get it before Jan 1 @ 10:00am.</p>';
+        }
+      };
+    }
+
     throw new Error(`Unexpected URL: ${url}`);
   };
 
   t.after(() => {
+    Date.now = originalNow;
     globalThis.fetch = originalFetch;
   });
 
@@ -81,9 +144,177 @@ test("enrichPromotions adds Steam review summary fields from appreviews", async 
   assert.equal(result.promotions[0].reviewNegative, 7033);
   assert.equal(result.promotions[0].reviewTotal, 49353);
   assert.equal(result.promotions[0].reviewPercent, 86);
+  assert.equal(result.promotions[0].endsAt, endsAt);
 
   assert.equal(result.metadataCache["app:599140"].reviewScore, 8);
   assert.equal(result.metadataCache["app:599140"].reviewPercent, 86);
+  assert.equal(result.metadataCache["app:599140"].freeToKeepEndsAt, endsAt);
+});
+
+test("enrichPromotions retries Steam deadline lookup when cached end time miss is stale", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const originalNow = Date.now;
+  const nowTs = Date.UTC(2026, 5, 1, 16, 0);
+  const endsAt = Date.UTC(2026, 5, 1, 17, 0);
+  let appPageRequests = 0;
+  let appPageFetchOptions = null;
+
+  Date.now = () => nowTs;
+
+  globalThis.fetch = async (url, options) => {
+    if (url.includes("/app/3771740/")) {
+      appPageRequests += 1;
+      appPageFetchOptions = options;
+      return {
+        ok: true,
+        async text() {
+          return '<p class="game_purchase_discount_quantity ">Free to keep when you get it before Jun 1 @ 10:00am.</p>';
+        }
+      };
+    }
+
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+
+  t.after(() => {
+    Date.now = originalNow;
+    globalThis.fetch = originalFetch;
+  });
+
+  const result = await enrichPromotions([
+    {
+      id: "app:3771740|free-to-keep|steam-store-search",
+      stableId: "app:3771740",
+      appId: 3771740,
+      title: "IQ Under Construction",
+      promoType: "free-to-keep",
+      sourceId: "steam-store-search"
+    }
+  ], {
+    "app:3771740": {
+      title: "IQ Under Construction",
+      type: "game",
+      priceInitial: 299,
+      priceFinal: 299,
+      priceDiscountPercent: 100,
+      priceFinalFormatted: "Free",
+      freeToKeepEndsAt: 0,
+      freeToKeepDeadlineUpdatedAt: nowTs - PROMOTION_DEADLINE_TTL_MS - 1,
+      freeToKeepDeadlineTimeZone: "America/Los_Angeles",
+      freeToKeepDeadlineVersion: 2,
+      reviewUpdatedAt: nowTs,
+      updatedAt: nowTs
+    }
+  });
+
+  assert.equal(appPageRequests, 1);
+  assert.equal(appPageFetchOptions?.credentials, "omit");
+  assert.equal(result.promotions[0].endsAt, endsAt);
+});
+
+test("enrichPromotions skips fresh cached deadline misses", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const originalNow = Date.now;
+  const nowTs = Date.UTC(2026, 5, 1, 16, 0);
+  let appPageRequests = 0;
+
+  Date.now = () => nowTs;
+
+  globalThis.fetch = async (url) => {
+    if (url.includes("/app/3771740/")) {
+      appPageRequests += 1;
+    }
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+
+  t.after(() => {
+    Date.now = originalNow;
+    globalThis.fetch = originalFetch;
+  });
+
+  const result = await enrichPromotions([
+    {
+      id: "app:3771740|free-to-keep|steam-store-search",
+      stableId: "app:3771740",
+      appId: 3771740,
+      title: "IQ Under Construction",
+      promoType: "free-to-keep",
+      sourceId: "steam-store-search"
+    }
+  ], {
+    "app:3771740": {
+      title: "IQ Under Construction",
+      type: "game",
+      priceInitial: 299,
+      priceFinal: 299,
+      priceDiscountPercent: 100,
+      priceFinalFormatted: "Free",
+      freeToKeepEndsAt: 0,
+      freeToKeepDeadlineUpdatedAt: nowTs,
+      freeToKeepDeadlineTimeZone: "America/Los_Angeles",
+      freeToKeepDeadlineVersion: 2,
+      reviewUpdatedAt: nowTs,
+      updatedAt: nowTs
+    }
+  });
+
+  assert.equal(appPageRequests, 0);
+  assert.equal(result.promotions[0].endsAt, 0);
+  assert.deepEqual(result.warnings, []);
+});
+
+test("enrichPromotions reports when Steam deadline HTML cannot be parsed", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const originalNow = Date.now;
+  const nowTs = Date.UTC(2026, 5, 1, 16, 0);
+
+  Date.now = () => nowTs;
+
+  globalThis.fetch = async (url) => {
+    if (url.includes("/app/3771740/")) {
+      return {
+        ok: true,
+        async text() {
+          return "<html><body>No deadline here</body></html>";
+        }
+      };
+    }
+
+    throw new Error(`Unexpected URL: ${url}`);
+  };
+
+  t.after(() => {
+    Date.now = originalNow;
+    globalThis.fetch = originalFetch;
+  });
+
+  const result = await enrichPromotions([
+    {
+      id: "app:3771740|free-to-keep|steam-store-search",
+      stableId: "app:3771740",
+      appId: 3771740,
+      title: "IQ Under Construction",
+      promoType: "free-to-keep",
+      sourceId: "steam-store-search"
+    }
+  ], {
+    "app:3771740": {
+      title: "IQ Under Construction",
+      type: "game",
+      priceInitial: 299,
+      priceFinal: 299,
+      priceDiscountPercent: 100,
+      priceFinalFormatted: "Free",
+      reviewUpdatedAt: nowTs,
+      updatedAt: nowTs
+    }
+  });
+
+  assert.equal(result.promotions[0].endsAt, 0);
+  assert.equal(result.metadataCache["app:3771740"].freeToKeepDeadlineUpdatedAt, nowTs);
+  assert.equal(result.metadataCache["app:3771740"].freeToKeepDeadlineTimeZone, "America/Los_Angeles");
+  assert.equal(result.metadataCache["app:3771740"].freeToKeepDeadlineVersion, 2);
+  assert.match(result.warnings[0], /end time not found for app 3771740/);
 });
 
 test("enrichPromotions backfills reviews for fresh cached metadata created before review support", async (t) => {

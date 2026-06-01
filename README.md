@@ -26,6 +26,7 @@ It is built for people who want:
 - automatic checks in the background
 - browser notifications when a new promotion appears
 - a small popup with recent results and status
+- promotion end times when Steam exposes them
 - Steam user review badges directly on promotion cards
 - an ignore list with restore support for promotions you do not want to see right now
 - simple settings without extra complexity
@@ -39,12 +40,14 @@ When it finds a new one, it can:
 - show a browser notification
 - update the extension badge
 - save a short local history so you can see recent detections
+- show the promotion end time when Steam exposes it
 - include Steam review summary details when review data is available
 
 You can also open the popup at any time to:
 
 - see the latest promotions
 - see Steam review badges on supported entries
+- see known promotion end times
 - check when the last scan happened
 - see when the next scan is planned
 - start a manual check with `Check now`

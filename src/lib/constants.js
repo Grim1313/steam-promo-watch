@@ -65,6 +65,7 @@ export const DEFAULT_QUIET_END = "08:00";
 
 export const FETCH_TIMEOUT_MS = 12000;
 export const METADATA_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const PROMOTION_DEADLINE_TTL_MS = 6 * 60 * 60 * 1000;
 export const NOTIFICATION_LINK_TTL_MS = 2 * 24 * 60 * 60 * 1000;
 export const MAX_HISTORY_ITEMS = 400;
 export const MAX_LATEST_ITEMS = 25;

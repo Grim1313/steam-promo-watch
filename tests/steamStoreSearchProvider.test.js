@@ -16,6 +16,7 @@ const SEARCH_RESULTS_HTML = `
           <div class="discount_block search_discount_block"
                data-price-final="0"
                data-discount="100"
+               data-discount_expiration="1780333245"
                role="link"
                aria-label="100% off. $19.99 normally, discounted to $0.00">
             <div class="discount_pct">-100%</div>
@@ -127,6 +128,7 @@ test("parseSearchRows detects active free-to-keep rows discounted to zero", () =
     promotions.map((promotion) => promotion.appId),
     [599140, 3027490]
   );
+  assert.equal(promotions[0].endsAt, 1780333245 * 1000);
   assert.ok(promotions.every((promotion) => promotion.promoType === "free-to-keep"));
 });
 

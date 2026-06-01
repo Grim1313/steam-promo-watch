@@ -2,6 +2,8 @@ import {
   CONTENT_TYPES,
   MAX_METADATA_ITEMS,
   METADATA_TTL_MS,
+  PROMO_TYPES,
+  PROMOTION_DEADLINE_TTL_MS,
   SOURCE_IDS,
   STORAGE_KEYS
 } from "../constants.js";
@@ -9,14 +11,57 @@ import { readKey } from "../storage.js";
 import {
   chunkArray,
   fetchJsonWithTimeout,
+  fetchTextWithTimeout,
+  normalizeWhitespace,
   safeNumber,
   sanitizeSteamAssetUrl,
   sanitizeSteamReviewSummary,
+  stripHtml,
   titleLooksLikeSoundtrack
 } from "../utils.js";
 
 const APP_DETAILS_URL = "https://store.steampowered.com/api/appdetails";
 const APP_REVIEWS_URL = "https://store.steampowered.com/appreviews";
+const APP_PAGE_URL = "https://store.steampowered.com/app";
+const STEAM_DEADLINE_CACHE_VERSION = 2;
+const STEAM_DEADLINE_ROLLOVER_GRACE_MS = 2 * 24 * 60 * 60 * 1000;
+const STEAM_DEADLINE_TIME_ZONE = "America/Los_Angeles";
+const STEAM_DEADLINE_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  timeZone: STEAM_DEADLINE_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23"
+});
+const STEAM_MONTHS = Object.freeze({
+  jan: 0,
+  january: 0,
+  feb: 1,
+  february: 1,
+  mar: 2,
+  march: 2,
+  apr: 3,
+  april: 3,
+  may: 4,
+  jun: 5,
+  june: 5,
+  jul: 6,
+  july: 6,
+  aug: 7,
+  august: 7,
+  sep: 8,
+  sept: 8,
+  september: 8,
+  oct: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  dec: 11,
+  december: 11
+});
 
 export function sanitizeMetadataCache(raw = {}) {
   const source = typeof raw === "object" && raw ? raw : {};
@@ -39,6 +84,10 @@ export function sanitizeMetadataCache(raw = {}) {
       priceFinal: safeNumber(value.priceFinal, 0),
       priceDiscountPercent: safeNumber(value.priceDiscountPercent, 0),
       priceFinalFormatted: typeof value.priceFinalFormatted === "string" ? value.priceFinalFormatted : "",
+      freeToKeepEndsAt: safeNumber(value.freeToKeepEndsAt, 0),
+      freeToKeepDeadlineUpdatedAt: safeNumber(value.freeToKeepDeadlineUpdatedAt, 0),
+      freeToKeepDeadlineTimeZone: typeof value.freeToKeepDeadlineTimeZone === "string" ? value.freeToKeepDeadlineTimeZone : "",
+      freeToKeepDeadlineVersion: safeNumber(value.freeToKeepDeadlineVersion, 0),
       ...sanitizeSteamReviewSummary(value),
       reviewUpdatedAt: safeNumber(value.reviewUpdatedAt, 0),
       updatedAt: safeNumber(value.updatedAt, 0)
@@ -139,6 +188,201 @@ async function fetchMissingMetadata(cache, appIds) {
   return pruneMetadataCache(next, nowTs);
 }
 
+function buildAppPageUrl(appId) {
+  return `${APP_PAGE_URL}/${appId}/?l=english&cc=us`;
+}
+
+function decodeScriptEscapes(value) {
+  return String(value || "")
+    .replace(/\\\//g, "/")
+    .replace(/\\"/g, '"')
+    .replace(/\\u([0-9a-f]{4})/gi, (_match, hex) => String.fromCharCode(Number.parseInt(hex, 16)));
+}
+
+function getSteamDeadlineDateParts(timestamp) {
+  const values = {};
+  for (const part of STEAM_DEADLINE_DATE_FORMATTER.formatToParts(timestamp)) {
+    if (part.type !== "literal") {
+      values[part.type] = Number(part.value);
+    }
+  }
+  return values;
+}
+
+function getSteamDeadlineTimeZoneOffsetMs(timestamp) {
+  const parts = getSteamDeadlineDateParts(timestamp);
+  return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second) - timestamp;
+}
+
+function buildSteamDeadlineTimestamp(year, month, day, hour, minute) {
+  const localAsUtc = Date.UTC(year, month, day, hour, minute, 0, 0);
+  const firstOffset = getSteamDeadlineTimeZoneOffsetMs(localAsUtc);
+  const firstCandidate = localAsUtc - firstOffset;
+  const secondOffset = getSteamDeadlineTimeZoneOffsetMs(firstCandidate);
+  return secondOffset === firstOffset ? firstCandidate : localAsUtc - secondOffset;
+}
+
+export function parseSteamFreeToKeepEndsAt(text, nowTs = Date.now()) {
+  const normalized = normalizeWhitespace(stripHtml(text));
+  const match = /\bbefore\s+([A-Za-z]{3,9})\s+(\d{1,2})(?:,\s*(\d{4}))?\s*@\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/i.exec(normalized);
+  if (!match || !/\bfree\s+to\s+keep\b/i.test(normalized)) {
+    return 0;
+  }
+
+  const month = STEAM_MONTHS[match[1].toLowerCase()];
+  const day = Number(match[2]);
+  const explicitYear = match[3] ? Number(match[3]) : 0;
+  const hourValue = Number(match[4]);
+  const minute = match[5] ? Number(match[5]) : 0;
+  const period = String(match[6] || "").toLowerCase();
+
+  if (
+    month === undefined ||
+    day < 1 ||
+    day > 31 ||
+    hourValue < 0 ||
+    hourValue > 23 ||
+    minute < 0 ||
+    minute > 59
+  ) {
+    return 0;
+  }
+
+  let hour = hourValue;
+  if (period === "pm" && hour < 12) {
+    hour += 12;
+  } else if (period === "am" && hour === 12) {
+    hour = 0;
+  }
+
+  const steamNow = getSteamDeadlineDateParts(nowTs);
+  const year = explicitYear || steamNow.year;
+  let candidate = buildSteamDeadlineTimestamp(year, month, day, hour, minute);
+  if (!Number.isFinite(candidate)) {
+    return 0;
+  }
+
+  if (!explicitYear && candidate < nowTs - STEAM_DEADLINE_ROLLOVER_GRACE_MS) {
+    candidate = buildSteamDeadlineTimestamp(year + 1, month, day, hour, minute);
+  }
+
+  return candidate;
+}
+
+export function extractSteamFreeToKeepEndsAtFromHtml(html, nowTs = Date.now()) {
+  const source = String(html || "");
+  const purchaseNotes = source.match(/<p\b[^>]*class="[^"]*\bgame_purchase_discount_quantity\b[^"]*"[^>]*>[\s\S]*?<\/p>/gi) || [];
+  for (const note of purchaseNotes) {
+    const endsAt = parseSteamFreeToKeepEndsAt(note, nowTs);
+    if (endsAt) {
+      return endsAt;
+    }
+  }
+  return parseSteamFreeToKeepEndsAt(source, nowTs) || parseSteamFreeToKeepEndsAt(decodeScriptEscapes(source), nowTs);
+}
+
+function shouldFetchFreeToKeepDeadline(metadata, nowTs) {
+  const endsAt = safeNumber(metadata?.freeToKeepEndsAt, 0);
+  const updatedAt = safeNumber(metadata?.freeToKeepDeadlineUpdatedAt, 0);
+  if (
+    metadata?.freeToKeepDeadlineTimeZone !== STEAM_DEADLINE_TIME_ZONE ||
+    safeNumber(metadata?.freeToKeepDeadlineVersion, 0) !== STEAM_DEADLINE_CACHE_VERSION
+  ) {
+    return true;
+  }
+  if (endsAt > nowTs) {
+    return false;
+  }
+  if (!endsAt) {
+    return !updatedAt || (nowTs - updatedAt) >= PROMOTION_DEADLINE_TTL_MS;
+  }
+  return !updatedAt || (nowTs - updatedAt) >= PROMOTION_DEADLINE_TTL_MS;
+}
+
+async function fetchMissingPromotionDeadlines(cache, promotions) {
+  const nowTs = Date.now();
+  const next = { ...sanitizeMetadataCache(cache) };
+  const warnings = [];
+  const appIds = Array.from(new Set(
+    promotions
+      .filter((promotion) => {
+        const appId = safeNumber(promotion?.appId, 0);
+        const key = `app:${appId}`;
+        return (
+          promotion?.promoType === PROMO_TYPES.FREE_TO_KEEP &&
+          appId > 0 &&
+          !safeNumber(promotion?.endsAt, 0) &&
+          shouldFetchFreeToKeepDeadline(next[key], nowTs)
+        );
+      })
+      .map((promotion) => safeNumber(promotion.appId, 0))
+  ));
+
+  for (const batch of chunkArray(appIds, 4)) {
+    const responses = await Promise.all(batch.map(async (appId) => {
+      try {
+        const html = await fetchTextWithTimeout(buildAppPageUrl(appId), {
+          credentials: "omit",
+          headers: {
+            Accept: "text/html,application/xhtml+xml"
+          }
+        });
+        const endsAt = extractSteamFreeToKeepEndsAtFromHtml(html, nowTs);
+        return {
+          appId,
+          endsAt,
+          htmlLength: html.length,
+          hadResponse: true
+        };
+      } catch (error) {
+        return {
+          appId,
+          endsAt: 0,
+          error: error instanceof Error ? error.message : String(error),
+          hadResponse: false
+        };
+      }
+    }));
+
+    for (const { appId, endsAt, htmlLength, error, hadResponse } of responses) {
+      if (!hadResponse) {
+        warnings.push(`Free-to-keep end time fetch failed for app ${appId}: ${error || "unknown error"}`);
+        continue;
+      }
+      if (!endsAt) {
+        const key = `app:${appId}`;
+        const existing = next[key] || {};
+        next[key] = {
+          ...existing,
+          freeToKeepEndsAt: 0,
+          freeToKeepDeadlineUpdatedAt: nowTs,
+          freeToKeepDeadlineTimeZone: STEAM_DEADLINE_TIME_ZONE,
+          freeToKeepDeadlineVersion: STEAM_DEADLINE_CACHE_VERSION,
+          updatedAt: safeNumber(existing.updatedAt, 0) || nowTs
+        };
+        warnings.push(`Free-to-keep end time not found for app ${appId}; Steam page HTML length ${htmlLength || 0}.`);
+        continue;
+      }
+
+      const key = `app:${appId}`;
+      const existing = next[key] || {};
+      next[key] = {
+        ...existing,
+        freeToKeepEndsAt: endsAt,
+        freeToKeepDeadlineUpdatedAt: nowTs,
+        freeToKeepDeadlineTimeZone: STEAM_DEADLINE_TIME_ZONE,
+        freeToKeepDeadlineVersion: STEAM_DEADLINE_CACHE_VERSION,
+        updatedAt: safeNumber(existing.updatedAt, 0) || nowTs
+      };
+    }
+  }
+
+  return {
+    metadataCache: pruneMetadataCache(next, nowTs),
+    warnings
+  };
+}
+
 function inferContentType(promotion, metadataCache) {
   if (promotion.stableId.startsWith("sub:")) {
     return CONTENT_TYPES.PACKAGE;
@@ -175,7 +419,9 @@ export async function enrichPromotions(promotions, existingCache) {
       .filter((value) => Number.isInteger(value) && value > 0)
   ));
 
-  const metadataCache = await fetchMissingMetadata(existingCache, appIds);
+  let metadataCache = await fetchMissingMetadata(existingCache, appIds);
+  const deadlineResult = await fetchMissingPromotionDeadlines(metadataCache, promotions);
+  metadataCache = deadlineResult.metadataCache;
 
   const enriched = promotions.map((promotion) => {
     const metadata = metadataCache[promotion.stableId];
@@ -201,6 +447,7 @@ export async function enrichPromotions(promotions, existingCache) {
       reviewTotal: safeNumber(metadata?.reviewTotal, 0),
       reviewPercent: safeNumber(metadata?.reviewPercent, 0),
       contentType: inferContentType(promotion, metadataCache),
+      endsAt: safeNumber(promotion.endsAt, 0) || safeNumber(metadata?.freeToKeepEndsAt, 0),
       isLikelyFreeToKeep: promotion.promoType !== "free-to-keep"
         ? true
         : (isSourceConfirmedFreeToKeep(promotion) || metadataConfirmedFreeToKeep)
@@ -209,6 +456,7 @@ export async function enrichPromotions(promotions, existingCache) {
 
   return {
     promotions: enriched,
-    metadataCache
+    metadataCache,
+    warnings: deadlineResult.warnings
   };
 }

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildSteamHeaderImageUrl,
+  formatPromotionDeadlineStatus,
   formatSteamReviewNotificationSummary,
   formatSteamReviewTooltip,
   getPromotionImageUrl,
@@ -104,5 +105,16 @@ test("formatSteamReviewNotificationSummary builds a short notification line", ()
       reviewTotal: 49353
     }),
     "Very Positive · 86% positive · 49.4K reviews"
+  );
+});
+
+test("formatPromotionDeadlineStatus remains visible when Steam end time is unavailable", () => {
+  assert.equal(
+    formatPromotionDeadlineStatus(0, 0),
+    "End time unavailable"
+  );
+  assert.match(
+    formatPromotionDeadlineStatus(0, new Date(2026, 0, 1, 10, 0).getTime()),
+    /^End time unavailable · Last checked .+/
   );
 });

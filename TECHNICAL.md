@@ -81,6 +81,7 @@ steam-promo-watch/
   - one active check at a time
   - timeout-protected `fetch`
   - batched app-details enrichment
+  - throttled promotion deadline lookups
   - limited cache and bounded history
 
 ## Scope
@@ -197,7 +198,7 @@ Useful checks:
 - Add a dedicated diagnostics page with provider test output.
 - Add stronger migration support for future schema updates.
 - Add optional region / language settings.
-- Add richer campaign start/end detection when a better source is available.
+- Add richer campaign start detection when a better source is available.
 
 ## Testing
 

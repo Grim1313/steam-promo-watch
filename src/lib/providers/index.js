@@ -44,6 +44,7 @@ export async function fetchPromotionsFromProviders(settings) {
 
   const metadataCache = await getMetadataCache();
   const enriched = await enrichPromotions(promotions, metadataCache);
+  warnings.push(...(enriched.warnings || []));
 
   return {
     promotions: enriched.promotions,

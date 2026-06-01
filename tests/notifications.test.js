@@ -39,7 +39,11 @@ function createChromeMock() {
 
 test("createPromotionNotifications uses image notifications when artwork is available", async (t) => {
   const { notificationCalls, storageState } = createChromeMock();
+  const originalNow = Date.now;
+  const nowTs = new Date(2026, 0, 1, 10, 0).getTime();
+  Date.now = () => nowTs;
   t.after(() => {
+    Date.now = originalNow;
     delete globalThis.chrome;
   });
 
@@ -53,6 +57,7 @@ test("createPromotionNotifications uses image notifications when artwork is avai
     reviewNegative: 7033,
     reviewTotal: 49353,
     reviewPercent: 86,
+    endsAt: new Date(2026, 0, 1, 12, 0).getTime(),
     url: "https://store.steampowered.com/app/599140/Graveyard_Keeper/",
     screenshotFull: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/599140/shot_1920.jpg",
     screenshotThumbnail: "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/599140/shot_600.jpg",
@@ -63,6 +68,7 @@ test("createPromotionNotifications uses image notifications when artwork is avai
   assert.equal(notificationCalls.length, 1);
   assert.equal(notificationCalls[0][1].type, "image");
   assert.equal(notificationCalls[0][1].imageUrl, "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/599140/header.jpg");
+  assert.match(notificationCalls[0][1].message, /^Free to Keep on Steam\. Ends .+\(.+\)\.$/);
   assert.equal(notificationCalls[0][1].contextMessage, "Very Positive · 86% positive · 49.4K reviews");
   assert.ok(storageState[STORAGE_KEYS.notificationLinks]);
 });
@@ -77,4 +83,22 @@ test("sendTestNotification includes review summary text", async (t) => {
 
   assert.equal(notificationCalls.length, 1);
   assert.equal(notificationCalls[0][1].contextMessage, "Very Positive · 86% positive · 49.4K reviews");
+});
+
+test("createPromotionNotifications keeps deadline status visible when no end time was parsed", async (t) => {
+  const { notificationCalls } = createChromeMock();
+  t.after(() => {
+    delete globalThis.chrome;
+  });
+
+  await createPromotionNotifications([{
+    id: "app:3771740",
+    stableId: "app:3771740",
+    title: "IQ Under Construction",
+    promoType: "free-to-keep",
+    url: "https://store.steampowered.com/app/3771740/IQ_Under_Construction/"
+  }]);
+
+  assert.equal(notificationCalls.length, 1);
+  assert.equal(notificationCalls[0][1].message, "Free to Keep on Steam. End time unavailable.");
 });

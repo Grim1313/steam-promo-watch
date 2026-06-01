@@ -10,6 +10,7 @@ import { readKey, writeLocal } from "./storage.js";
 import {
   buildSteamHeaderImageUrl,
   buildSteamUrlFromStableId,
+  formatPromotionDeadlineStatus,
   formatSteamReviewNotificationSummary,
   getPromotionImageUrl,
   sanitizeSteamUrl
@@ -59,11 +60,12 @@ export async function createPromotionNotifications(promotions) {
     const notificationId = `${NOTIFICATION_PREFIX}:${promotion.id}:${nowTs}`;
     const imageUrl = getPromotionImageUrl(promotion, { preferScreenshot: false });
     const reviewSummary = formatSteamReviewNotificationSummary(promotion);
+    const deadlineSummary = formatPromotionDeadlineStatus(promotion.endsAt);
     const options = {
       type: imageUrl ? "image" : "basic",
       iconUrl: getNotificationIconUrl(),
       title: promotion.title,
-      message: `${getPromotionTypeLabel(promotion.promoType)} on Steam`,
+      message: `${getPromotionTypeLabel(promotion.promoType)} on Steam. ${deadlineSummary}.`,
       priority: 0,
       silent: false
     };
@@ -137,6 +139,7 @@ export async function sendTestNotification() {
     reviewNegative: 7033,
     reviewTotal: 49353,
     reviewPercent: 86,
+    endsAt: Date.now() + (24 * 60 * 60 * 1000),
     headerImage: buildSteamHeaderImageUrl(599140),
     capsuleImage: "",
     screenshotThumbnail: "",

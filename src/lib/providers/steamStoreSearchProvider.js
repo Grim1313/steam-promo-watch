@@ -23,6 +23,15 @@ function isDiscountedToZero(priceText, row) {
   return hasZeroFinalPrice && (hasDiscountedOriginalPrice || hasFullDiscount);
 }
 
+function parseDiscountExpiration(row) {
+  const match = /(?:data-discount[_-](?:end[_-]date|expiration)|discount_expiration)="?(\d{10,13})"?/i.exec(row);
+  const value = match ? Number(match[1]) : 0;
+  if (!Number.isFinite(value) || value <= 0) {
+    return 0;
+  }
+  return value > 1_000_000_000_000 ? value : value * 1000;
+}
+
 export function parseSearchRows(html, options = {}) {
   const allowFreeLabel = options.allowFreeLabel !== false;
   const rawTypeLabel = options.rawTypeLabel || "Store special";
@@ -63,6 +72,7 @@ export function parseSearchRows(html, options = {}) {
       rawTypeLabel,
       sourceId: SOURCE_IDS.STORE_SEARCH,
       sourceFingerprint: createHash(row),
+      endsAt: parseDiscountExpiration(row),
       rowText
     });
   }

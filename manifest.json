@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Steam Promo Watch",
-  "description": "Tracks new Steam free-to-keep promotions and notifies you about new giveaways.",
-  "version": "0.3.3",
+  "name": "Steam Promo Watch: Free Game Alerts",
+  "description": "Find limited-time free Steam games and get giveaway alerts. No Steam login required.",
+  "version": "0.4.0",
   "minimum_chrome_version": "120",
   "permissions": [
     "alarms",
@@ -18,7 +18,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Steam Promo Watch",
+    "default_title": "Steam Promo Watch: Free Game Alerts",
     "default_popup": "src/ui/popup.html"
   },
   "options_page": "src/ui/options.html",

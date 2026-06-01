@@ -12,6 +12,7 @@ export const fallbackProvider = {
       .filter((item) => Number(item?.final_price) === 0 && Number(item?.original_price) > 0 && Number(item?.id) > 0)
       .map((item) => {
         const stableId = `app:${item.id}`;
+        const discountExpiration = Number(item.discount_expiration) || 0;
         return {
           stableId,
           appId: Number(item.id),
@@ -21,7 +22,8 @@ export const fallbackProvider = {
           promoType: PROMO_TYPES.FREE_TO_KEEP,
           rawTypeLabel: "Featured special",
           sourceId: SOURCE_IDS.STORE_FEATURED,
-          sourceFingerprint: createHash(`${item.id}|${item.name}|${item.original_price}|${item.final_price}`)
+          sourceFingerprint: createHash(`${item.id}|${item.name}|${item.original_price}|${item.final_price}|${discountExpiration}`),
+          endsAt: discountExpiration > 0 ? discountExpiration * 1000 : 0
         };
       });
 
