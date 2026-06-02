@@ -51,6 +51,16 @@ test("parseSteamFreeToKeepEndsAt rolls no-year January deadlines into the next y
   );
 });
 
+test("parseSteamFreeToKeepEndsAt parses localized Steam times as device-local time", () => {
+  const nowTs = Date.UTC(2026, 5, 2, 8, 0);
+  const expectedTs = new Date(2026, 6, 1, 20, 0, 0, 0).getTime();
+
+  assert.equal(
+    parseSteamFreeToKeepEndsAt("Free to keep when you get it before Jul 1 @ 8:00pm.", nowTs),
+    expectedTs
+  );
+});
+
 test("enrichPromotions adds Steam review summary fields from appreviews", async (t) => {
   const originalFetch = globalThis.fetch;
   const originalNow = Date.now;
@@ -60,6 +70,27 @@ test("enrichPromotions adds Steam review summary fields from appreviews", async 
   Date.now = () => nowTs;
 
   globalThis.fetch = async (url) => {
+    if (url.includes("IStoreBrowseService/GetItems")) {
+      return {
+        ok: true,
+        async json() {
+          return {
+            response: {
+              store_items: [
+                {
+                  appid: 599140,
+                  best_purchase_option: {
+                    is_free_to_keep: true,
+                    free_to_keep_ends: endsAt / 1000
+                  }
+                }
+              ]
+            }
+          };
+        }
+      };
+    }
+
     if (url.includes("/api/appdetails?")) {
       return {
         ok: true,
@@ -212,17 +243,33 @@ test("enrichPromotions retries Steam deadline lookup when cached end time miss i
   assert.equal(result.promotions[0].endsAt, endsAt);
 });
 
-test("enrichPromotions skips fresh cached deadline misses", async (t) => {
+test("enrichPromotions retries fresh cached deadline misses", async (t) => {
   const originalFetch = globalThis.fetch;
   const originalNow = Date.now;
   const nowTs = Date.UTC(2026, 5, 1, 16, 0);
+  const endsAt = Date.UTC(2026, 5, 1, 17, 0);
   let appPageRequests = 0;
 
   Date.now = () => nowTs;
 
   globalThis.fetch = async (url) => {
+    if (url.includes("IStoreBrowseService/GetItems")) {
+      return {
+        ok: true,
+        async json() {
+          return { response: { store_items: [] } };
+        }
+      };
+    }
+
     if (url.includes("/app/3771740/")) {
       appPageRequests += 1;
+      return {
+        ok: true,
+        async text() {
+          return '<p class="game_purchase_discount_quantity ">Free to keep when you get it before Jun 1 @ 10:00am.</p>';
+        }
+      };
     }
     throw new Error(`Unexpected URL: ${url}`);
   };
@@ -252,14 +299,14 @@ test("enrichPromotions skips fresh cached deadline misses", async (t) => {
       freeToKeepEndsAt: 0,
       freeToKeepDeadlineUpdatedAt: nowTs,
       freeToKeepDeadlineTimeZone: "America/Los_Angeles",
-      freeToKeepDeadlineVersion: 2,
+      freeToKeepDeadlineVersion: 4,
       reviewUpdatedAt: nowTs,
       updatedAt: nowTs
     }
   });
 
-  assert.equal(appPageRequests, 0);
-  assert.equal(result.promotions[0].endsAt, 0);
+  assert.equal(appPageRequests, 1);
+  assert.equal(result.promotions[0].endsAt, endsAt);
   assert.deepEqual(result.warnings, []);
 });
 
@@ -271,6 +318,15 @@ test("enrichPromotions reports when Steam deadline HTML cannot be parsed", async
   Date.now = () => nowTs;
 
   globalThis.fetch = async (url) => {
+    if (url.includes("IStoreBrowseService/GetItems")) {
+      return {
+        ok: true,
+        async json() {
+          return { response: { store_items: [] } };
+        }
+      };
+    }
+
     if (url.includes("/app/3771740/")) {
       return {
         ok: true,
@@ -311,9 +367,9 @@ test("enrichPromotions reports when Steam deadline HTML cannot be parsed", async
   });
 
   assert.equal(result.promotions[0].endsAt, 0);
-  assert.equal(result.metadataCache["app:3771740"].freeToKeepDeadlineUpdatedAt, nowTs);
-  assert.equal(result.metadataCache["app:3771740"].freeToKeepDeadlineTimeZone, "America/Los_Angeles");
-  assert.equal(result.metadataCache["app:3771740"].freeToKeepDeadlineVersion, 2);
+  assert.equal(result.metadataCache["app:3771740"].freeToKeepDeadlineUpdatedAt, 0);
+  assert.equal(result.metadataCache["app:3771740"].freeToKeepDeadlineTimeZone, "");
+  assert.equal(result.metadataCache["app:3771740"].freeToKeepDeadlineVersion, 0);
   assert.match(result.warnings[0], /end time not found for app 3771740/);
 });
 
@@ -322,6 +378,15 @@ test("enrichPromotions backfills reviews for fresh cached metadata created befor
   const nowTs = Date.now();
 
   globalThis.fetch = async (url) => {
+    if (url.includes("IStoreBrowseService/GetItems")) {
+      return {
+        ok: true,
+        async json() {
+          return { response: { store_items: [] } };
+        }
+      };
+    }
+
     if (url.includes("/api/appdetails?")) {
       return {
         ok: true,
@@ -412,6 +477,15 @@ test("enrichPromotions confirms 100 percent appdetails discounts with non-zero n
   const originalFetch = globalThis.fetch;
 
   globalThis.fetch = async (url) => {
+    if (url.includes("IStoreBrowseService/GetItems")) {
+      return {
+        ok: true,
+        async json() {
+          return { response: { store_items: [] } };
+        }
+      };
+    }
+
     if (url.includes("/api/appdetails?")) {
       return {
         ok: true,

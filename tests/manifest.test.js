@@ -4,8 +4,8 @@ import { readFile } from "node:fs/promises";
 
 const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
 
-test("manifest version is prepared for the 0.4.0 release", () => {
-  assert.equal(manifest.version, "0.4.0");
+test("manifest version is prepared for the 0.4.1 release", () => {
+  assert.equal(manifest.version, "0.4.1");
 });
 
 test("manifest uses the Chrome Web Store release name and summary", () => {
@@ -19,4 +19,8 @@ test("manifest uses the Chrome Web Store release name and summary", () => {
 
 test("manifest does not request the tabs permission", () => {
   assert.ok(!manifest.permissions.includes("tabs"));
+});
+
+test("manifest allows Steam Store API deadline lookups", () => {
+  assert.ok(manifest.host_permissions.includes("https://api.steampowered.com/*"));
 });

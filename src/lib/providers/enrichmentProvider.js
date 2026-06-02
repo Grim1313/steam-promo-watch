@@ -23,7 +23,9 @@ import {
 const APP_DETAILS_URL = "https://store.steampowered.com/api/appdetails";
 const APP_REVIEWS_URL = "https://store.steampowered.com/appreviews";
 const APP_PAGE_URL = "https://store.steampowered.com/app";
-const STEAM_DEADLINE_CACHE_VERSION = 2;
+const STORE_BROWSE_ITEMS_URL = "https://api.steampowered.com/IStoreBrowseService/GetItems/v1/";
+const STEAM_DEADLINE_CACHE_VERSION = 4;
+const STEAM_DEADLINE_CACHE_SOURCE = "StoreBrowse";
 const STEAM_DEADLINE_ROLLOVER_GRACE_MS = 2 * 24 * 60 * 60 * 1000;
 const STEAM_DEADLINE_TIME_ZONE = "America/Los_Angeles";
 const STEAM_DEADLINE_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
@@ -192,6 +194,20 @@ function buildAppPageUrl(appId) {
   return `${APP_PAGE_URL}/${appId}/?l=english&cc=us`;
 }
 
+function buildStoreBrowseItemsUrl(appIds) {
+  const input = {
+    ids: appIds.map((appId) => ({ appid: appId })),
+    context: {
+      country_code: "US",
+      language: "english"
+    },
+    data_request: {
+      include_purchase_options: true
+    }
+  };
+  return `${STORE_BROWSE_ITEMS_URL}?input_json=${encodeURIComponent(JSON.stringify(input))}`;
+}
+
 function decodeScriptEscapes(value) {
   return String(value || "")
     .replace(/\\\//g, "/")
@@ -220,6 +236,14 @@ function buildSteamDeadlineTimestamp(year, month, day, hour, minute) {
   const firstCandidate = localAsUtc - firstOffset;
   const secondOffset = getSteamDeadlineTimeZoneOffsetMs(firstCandidate);
   return secondOffset === firstOffset ? firstCandidate : localAsUtc - secondOffset;
+}
+
+function buildLocalDeadlineTimestamp(year, month, day, hour, minute) {
+  return new Date(year, month, day, hour, minute, 0, 0).getTime();
+}
+
+function isDefaultSteamDeadlineTime(hourValue, minute, period) {
+  return hourValue === 10 && minute === 0 && period === "am";
 }
 
 export function parseSteamFreeToKeepEndsAt(text, nowTs = Date.now()) {
@@ -257,13 +281,15 @@ export function parseSteamFreeToKeepEndsAt(text, nowTs = Date.now()) {
 
   const steamNow = getSteamDeadlineDateParts(nowTs);
   const year = explicitYear || steamNow.year;
-  let candidate = buildSteamDeadlineTimestamp(year, month, day, hour, minute);
+  const useSteamDefaultTimeZone = isDefaultSteamDeadlineTime(hourValue, minute, period);
+  const buildTimestamp = useSteamDefaultTimeZone ? buildSteamDeadlineTimestamp : buildLocalDeadlineTimestamp;
+  let candidate = buildTimestamp(year, month, day, hour, minute);
   if (!Number.isFinite(candidate)) {
     return 0;
   }
 
   if (!explicitYear && candidate < nowTs - STEAM_DEADLINE_ROLLOVER_GRACE_MS) {
-    candidate = buildSteamDeadlineTimestamp(year + 1, month, day, hour, minute);
+    candidate = buildTimestamp(year + 1, month, day, hour, minute);
   }
 
   return candidate;
@@ -281,11 +307,52 @@ export function extractSteamFreeToKeepEndsAtFromHtml(html, nowTs = Date.now()) {
   return parseSteamFreeToKeepEndsAt(source, nowTs) || parseSteamFreeToKeepEndsAt(decodeScriptEscapes(source), nowTs);
 }
 
+function getStoreBrowsePurchaseOptions(item) {
+  const options = [];
+  if (item?.best_purchase_option && typeof item.best_purchase_option === "object") {
+    options.push(item.best_purchase_option);
+  }
+  if (Array.isArray(item?.purchase_options)) {
+    options.push(...item.purchase_options.filter((option) => option && typeof option === "object"));
+  }
+  return options;
+}
+
+function parseStoreBrowseFreeToKeepEndsAt(item) {
+  for (const option of getStoreBrowsePurchaseOptions(item)) {
+    const endsAtSeconds = safeNumber(option.free_to_keep_ends, 0);
+    if (option.is_free_to_keep && endsAtSeconds > 0) {
+      return endsAtSeconds * 1000;
+    }
+  }
+  return 0;
+}
+
+async function fetchStoreBrowsePromotionDeadlines(appIds) {
+  const deadlines = new Map();
+
+  for (const batch of chunkArray(appIds, 50)) {
+    const payload = await fetchJsonWithTimeout(buildStoreBrowseItemsUrl(batch), {
+      credentials: "omit"
+    });
+    const items = Array.isArray(payload?.response?.store_items) ? payload.response.store_items : [];
+    for (const item of items) {
+      const appId = safeNumber(item?.appid || item?.id, 0);
+      const endsAt = parseStoreBrowseFreeToKeepEndsAt(item);
+      if (appId > 0 && endsAt > 0) {
+        deadlines.set(appId, endsAt);
+      }
+    }
+  }
+
+  return deadlines;
+}
+
 function shouldFetchFreeToKeepDeadline(metadata, nowTs) {
   const endsAt = safeNumber(metadata?.freeToKeepEndsAt, 0);
   const updatedAt = safeNumber(metadata?.freeToKeepDeadlineUpdatedAt, 0);
   if (
-    metadata?.freeToKeepDeadlineTimeZone !== STEAM_DEADLINE_TIME_ZONE ||
+    metadata?.freeToKeepDeadlineTimeZone !== STEAM_DEADLINE_CACHE_SOURCE ||
     safeNumber(metadata?.freeToKeepDeadlineVersion, 0) !== STEAM_DEADLINE_CACHE_VERSION
   ) {
     return true;
@@ -294,7 +361,7 @@ function shouldFetchFreeToKeepDeadline(metadata, nowTs) {
     return false;
   }
   if (!endsAt) {
-    return !updatedAt || (nowTs - updatedAt) >= PROMOTION_DEADLINE_TTL_MS;
+    return true;
   }
   return !updatedAt || (nowTs - updatedAt) >= PROMOTION_DEADLINE_TTL_MS;
 }
@@ -317,8 +384,30 @@ async function fetchMissingPromotionDeadlines(cache, promotions) {
       })
       .map((promotion) => safeNumber(promotion.appId, 0))
   ));
+  const pendingAppIds = new Set(appIds);
 
-  for (const batch of chunkArray(appIds, 4)) {
+  if (appIds.length) {
+    try {
+      const apiDeadlines = await fetchStoreBrowsePromotionDeadlines(appIds);
+      for (const [appId, endsAt] of apiDeadlines) {
+        const key = `app:${appId}`;
+        const existing = next[key] || {};
+        next[key] = {
+          ...existing,
+          freeToKeepEndsAt: endsAt,
+          freeToKeepDeadlineUpdatedAt: nowTs,
+          freeToKeepDeadlineTimeZone: STEAM_DEADLINE_CACHE_SOURCE,
+          freeToKeepDeadlineVersion: STEAM_DEADLINE_CACHE_VERSION,
+          updatedAt: safeNumber(existing.updatedAt, 0) || nowTs
+        };
+        pendingAppIds.delete(appId);
+      }
+    } catch (error) {
+      warnings.push(`Free-to-keep end time API fetch failed: ${error instanceof Error ? error.message : String(error)}.`);
+    }
+  }
+
+  for (const batch of chunkArray(Array.from(pendingAppIds), 4)) {
     const responses = await Promise.all(batch.map(async (appId) => {
       try {
         const html = await fetchTextWithTimeout(buildAppPageUrl(appId), {
@@ -327,11 +416,22 @@ async function fetchMissingPromotionDeadlines(cache, promotions) {
             Accept: "text/html,application/xhtml+xml"
           }
         });
-        const endsAt = extractSteamFreeToKeepEndsAtFromHtml(html, nowTs);
+        let endsAt = extractSteamFreeToKeepEndsAtFromHtml(html, nowTs);
+        let htmlLength = html.length;
+        if (!endsAt && /age_gate|agecheck/i.test(html)) {
+          const credentialedHtml = await fetchTextWithTimeout(buildAppPageUrl(appId), {
+            credentials: "include",
+            headers: {
+              Accept: "text/html,application/xhtml+xml"
+            }
+          });
+          endsAt = extractSteamFreeToKeepEndsAtFromHtml(credentialedHtml, nowTs);
+          htmlLength = credentialedHtml.length;
+        }
         return {
           appId,
           endsAt,
-          htmlLength: html.length,
+          htmlLength,
           hadResponse: true
         };
       } catch (error) {
@@ -355,9 +455,9 @@ async function fetchMissingPromotionDeadlines(cache, promotions) {
         next[key] = {
           ...existing,
           freeToKeepEndsAt: 0,
-          freeToKeepDeadlineUpdatedAt: nowTs,
-          freeToKeepDeadlineTimeZone: STEAM_DEADLINE_TIME_ZONE,
-          freeToKeepDeadlineVersion: STEAM_DEADLINE_CACHE_VERSION,
+          freeToKeepDeadlineUpdatedAt: 0,
+          freeToKeepDeadlineTimeZone: "",
+          freeToKeepDeadlineVersion: 0,
           updatedAt: safeNumber(existing.updatedAt, 0) || nowTs
         };
         warnings.push(`Free-to-keep end time not found for app ${appId}; Steam page HTML length ${htmlLength || 0}.`);
@@ -370,7 +470,7 @@ async function fetchMissingPromotionDeadlines(cache, promotions) {
         ...existing,
         freeToKeepEndsAt: endsAt,
         freeToKeepDeadlineUpdatedAt: nowTs,
-        freeToKeepDeadlineTimeZone: STEAM_DEADLINE_TIME_ZONE,
+        freeToKeepDeadlineTimeZone: STEAM_DEADLINE_CACHE_SOURCE,
         freeToKeepDeadlineVersion: STEAM_DEADLINE_CACHE_VERSION,
         updatedAt: safeNumber(existing.updatedAt, 0) || nowTs
       };

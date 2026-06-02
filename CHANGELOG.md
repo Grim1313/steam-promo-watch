@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+### What's new
+
+- Fixed promotion end date detection.
+
 ## 0.4.0
 
 ### What's new
