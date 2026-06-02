@@ -1,6 +1,6 @@
 # Steam Promo Watch - track new free game giveaways on Steam
 
-Steam Promo Watch is a lightweight Chrome / Edge extension that watches Steam for `Free to Keep` 100% discount promotions and notifies you when something new appears.
+Steam Promo Watch is a lightweight Chrome / Edge extension that watches Steam for `Free to Keep` 100% discount game promotions and notifies you when something new appears.
 
 [![Available in the Chrome Web Store](https://developer.chrome.com/static/docs/webstore/branding/image/UV4C4ybeBTsZt43U4xis.png)](https://chromewebstore.google.com/detail/steam-promo-watch/aahjgnocdbhipkfcmhkhlkneonhkafji)
 
