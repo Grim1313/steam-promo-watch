@@ -11,6 +11,7 @@ import { readKey } from "./storage.js";
 import {
   buildSteamUrlFromStableId,
   daysToMs,
+  normalizeWhitespace,
   safeArray,
   safeNumber,
   sanitizeSteamAssetUrl,
@@ -43,6 +44,7 @@ export function sanitizePromotionEntry(raw = {}) {
     promoType: typeof source.promoType === "string" ? source.promoType : "free-to-keep",
     rawTypeLabel: typeof source.rawTypeLabel === "string" ? source.rawTypeLabel : "",
     contentType: typeof source.contentType === "string" ? source.contentType : "unknown",
+    basePriceFormatted: typeof source.basePriceFormatted === "string" ? normalizeWhitespace(source.basePriceFormatted).slice(0, 64) : "",
     url: typeof source.url === "string" ? source.url : "https://store.steampowered.com/",
     headerImage: sanitizeSteamAssetUrl(source.headerImage),
     capsuleImage: sanitizeSteamAssetUrl(source.capsuleImage),

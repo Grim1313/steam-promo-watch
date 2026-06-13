@@ -2,6 +2,15 @@ import { PROMO_TYPES, SOURCE_IDS } from "../constants.js";
 import { buildSteamUrlFromStableId, createHash, fetchJsonWithTimeout } from "../utils.js";
 
 const FEATURED_URL = "https://store.steampowered.com/api/featuredcategories/?cc=us&l=english";
+const USD_CENTS_FORMATTER = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD"
+});
+
+function formatUsdCents(value) {
+  const cents = Number(value);
+  return Number.isFinite(cents) && cents > 0 ? USD_CENTS_FORMATTER.format(cents / 100) : "";
+}
 
 export const fallbackProvider = {
   id: SOURCE_IDS.STORE_FEATURED,
@@ -23,6 +32,7 @@ export const fallbackProvider = {
           rawTypeLabel: "Featured special",
           sourceId: SOURCE_IDS.STORE_FEATURED,
           sourceFingerprint: createHash(`${item.id}|${item.name}|${item.original_price}|${item.final_price}|${discountExpiration}`),
+          basePriceFormatted: formatUsdCents(item.original_price),
           endsAt: discountExpiration > 0 ? discountExpiration * 1000 : 0
         };
       });

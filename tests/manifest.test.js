@@ -4,8 +4,8 @@ import { readFile } from "node:fs/promises";
 
 const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
 
-test("manifest version is prepared for the 0.4.1 release", () => {
-  assert.equal(manifest.version, "0.4.1");
+test("manifest version is prepared for the 0.5.0 release", () => {
+  assert.equal(manifest.version, "0.5.0");
 });
 
 test("manifest uses the Chrome Web Store release name and summary", () => {

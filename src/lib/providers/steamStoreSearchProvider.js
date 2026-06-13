@@ -9,11 +9,15 @@ function buildFreePriceSearchUrl(start) {
   return `https://store.steampowered.com/search/results/?query&start=${start}&count=${FREE_PRICE_SEARCH_PAGE_SIZE}&dynamic_data=&sort_by=Price_ASC&maxprice=free&category1=998&supportedlang=english&ndl=1&infinite=1`;
 }
 
+function getOriginalPriceText(row) {
+  const originalPriceMatch = /class="discount_original_price[^"]*">([\s\S]*?)<\/div>/i.exec(row);
+  return normalizeWhitespace(stripHtml(originalPriceMatch ? originalPriceMatch[1] : ""));
+}
+
 function isDiscountedToZero(priceText, row) {
   const finalPriceMatch = /data-price-final="(\d+)"/i.exec(row);
   const discountMatch = /data-discount="(\d+)"/i.exec(row);
-  const originalPriceMatch = /class="discount_original_price[^"]*">([\s\S]*?)<\/div>/i.exec(row);
-  const originalPriceText = normalizeWhitespace(stripHtml(originalPriceMatch ? originalPriceMatch[1] : ""));
+  const originalPriceText = getOriginalPriceText(row);
   const normalizedFinalPrice = priceText.replace(/[^\d.,]/g, "");
   const normalizedOriginalPrice = originalPriceText.replace(/[^\d.,]/g, "");
   const hasZeroFinalPrice = (finalPriceMatch ? Number(finalPriceMatch[1]) : NaN) === 0 || /^0(?:[.,]00)?$/.test(normalizedFinalPrice);
@@ -72,6 +76,7 @@ export function parseSearchRows(html, options = {}) {
       rawTypeLabel,
       sourceId: SOURCE_IDS.STORE_SEARCH,
       sourceFingerprint: createHash(row),
+      basePriceFormatted: getOriginalPriceText(row),
       endsAt: parseDiscountExpiration(row),
       rowText
     });

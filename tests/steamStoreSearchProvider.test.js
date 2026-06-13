@@ -128,6 +128,8 @@ test("parseSearchRows detects active free-to-keep rows discounted to zero", () =
     promotions.map((promotion) => promotion.appId),
     [599140, 3027490]
   );
+  assert.equal(promotions[0].basePriceFormatted, "$19.99");
+  assert.equal(promotions[1].basePriceFormatted, "$15.99");
   assert.equal(promotions[0].endsAt, 1780333245 * 1000);
   assert.ok(promotions.every((promotion) => promotion.promoType === "free-to-keep"));
 });
@@ -148,4 +150,5 @@ test("parseSearchRows can scan free-price pages without accepting permanent free
   assert.equal(promotions[0].appId, 3550490);
   assert.equal(promotions[0].title, "Overcome Your Fears - Caretaker");
   assert.equal(promotions[0].rawTypeLabel, "Store free price");
+  assert.equal(promotions[0].basePriceFormatted, "$5.99");
 });

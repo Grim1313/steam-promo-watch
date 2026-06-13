@@ -1,6 +1,6 @@
 import { getContentTypeLabel, getPromotionTypeLabel } from "../lib/filters.js";
 import { formatDateTime, formatPromotionDeadlineStatus, formatRelativeTime, getPromotionImageUrl } from "../lib/utils.js";
-import { getPopupStatusText, getVisiblePromotions } from "./popup-state.js";
+import { getPopupStatusText, getPromotionBasePriceLabel, getVisiblePromotions } from "./popup-state.js";
 import { buildSteamStoreAriaLabel, createSteamReviewBadge } from "./review-badge.js";
 
 const RELEASES_URL = "https://github.com/Grim1313/steam-promo-watch/releases/latest";
@@ -108,7 +108,16 @@ function renderPromotions(entries) {
     contentTag.className = "tag";
     contentTag.textContent = getContentTypeLabel(entry.contentType);
 
+    const basePriceLabel = getPromotionBasePriceLabel(entry);
+
     tags.append(promoTag, contentTag);
+    if (basePriceLabel) {
+      const basePriceTag = document.createElement("span");
+      basePriceTag.className = "tag base-price-tag";
+      basePriceTag.textContent = basePriceLabel;
+      basePriceTag.title = "Base price before the 100% discount, not the current price.";
+      tags.append(basePriceTag);
+    }
 
     const seenLine = document.createElement("div");
     seenLine.className = "meta-line";

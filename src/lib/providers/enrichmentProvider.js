@@ -85,6 +85,7 @@ export function sanitizeMetadataCache(raw = {}) {
       priceInitial: safeNumber(value.priceInitial, 0),
       priceFinal: safeNumber(value.priceFinal, 0),
       priceDiscountPercent: safeNumber(value.priceDiscountPercent, 0),
+      priceInitialFormatted: typeof value.priceInitialFormatted === "string" ? normalizeWhitespace(value.priceInitialFormatted) : "",
       priceFinalFormatted: typeof value.priceFinalFormatted === "string" ? value.priceFinalFormatted : "",
       freeToKeepEndsAt: safeNumber(value.freeToKeepEndsAt, 0),
       freeToKeepDeadlineUpdatedAt: safeNumber(value.freeToKeepDeadlineUpdatedAt, 0),
@@ -170,6 +171,9 @@ async function fetchMissingMetadata(cache, appIds) {
         priceInitial: data ? safeNumber(data.price_overview?.initial, 0) : safeNumber(existing.priceInitial, 0),
         priceFinal: data ? safeNumber(data.price_overview?.final, 0) : safeNumber(existing.priceFinal, 0),
         priceDiscountPercent: data ? safeNumber(data.price_overview?.discount_percent, 0) : safeNumber(existing.priceDiscountPercent, 0),
+        priceInitialFormatted: data && typeof data.price_overview?.initial_formatted === "string"
+          ? normalizeWhitespace(data.price_overview.initial_formatted)
+          : (existing.priceInitialFormatted || ""),
         priceFinalFormatted: data && typeof data.price_overview?.final_formatted === "string"
           ? data.price_overview.final_formatted
           : (existing.priceFinalFormatted || ""),
@@ -548,6 +552,7 @@ export async function enrichPromotions(promotions, existingCache) {
       reviewPercent: safeNumber(metadata?.reviewPercent, 0),
       contentType: inferContentType(promotion, metadataCache),
       endsAt: safeNumber(promotion.endsAt, 0) || safeNumber(metadata?.freeToKeepEndsAt, 0),
+      basePriceFormatted: promotion.basePriceFormatted || metadata?.priceInitialFormatted || "",
       isLikelyFreeToKeep: promotion.promoType !== "free-to-keep"
         ? true
         : (isSourceConfirmedFreeToKeep(promotion) || metadataConfirmedFreeToKeep)

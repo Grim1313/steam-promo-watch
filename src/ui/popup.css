@@ -1,16 +1,3 @@
-:root {
-  color-scheme: light;
-  --bg: linear-gradient(180deg, #f6f8fb 0%, #eef3f7 100%);
-  --panel: rgba(255, 255, 255, 0.92);
-  --panel-border: rgba(21, 40, 61, 0.08);
-  --text: #172331;
-  --muted: #617282;
-  --accent: #0d78b9;
-  --accent-soft: rgba(13, 120, 185, 0.12);
-  --warn-bg: rgba(217, 75, 61, 0.08);
-  --warn-text: #9b3429;
-}
-
 * {
   box-sizing: border-box;
 }
@@ -33,7 +20,7 @@ body {
   border: 1px solid var(--panel-border);
   background: var(--panel);
   border-radius: 18px;
-  box-shadow: 0 10px 22px rgba(27, 44, 68, 0.08);
+  box-shadow: 0 10px 22px var(--shadow-panel);
 }
 
 .hero {
@@ -43,7 +30,7 @@ body {
   gap: 12px;
   padding: 16px;
   background:
-    radial-gradient(circle at top right, rgba(13, 120, 185, 0.16), transparent 35%),
+    radial-gradient(circle at top right, var(--panel-glow), transparent 35%),
     var(--panel);
 }
 
@@ -74,7 +61,7 @@ h2 {
   border-radius: 12px;
   padding: 10px 14px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -156,8 +143,8 @@ h2 {
   gap: 12px;
   padding: 12px;
   border-radius: 14px;
-  background: rgba(246, 248, 251, 0.9);
-  border: 1px solid rgba(21, 40, 61, 0.05);
+  background: var(--panel-subtle);
+  border: 1px solid var(--border-soft);
 }
 
 .promotion-media {
@@ -165,7 +152,7 @@ h2 {
   display: block;
   border-radius: 12px;
   overflow: hidden;
-  background: rgba(21, 40, 61, 0.06);
+  background: var(--media-placeholder);
 }
 
 .promotion-image {
@@ -185,9 +172,9 @@ h2 {
   min-width: 86px;
   padding: 7px 9px 8px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: #fff;
-  box-shadow: 0 12px 28px rgba(6, 14, 26, 0.28);
+  border: 1px solid var(--review-border);
+  color: var(--on-accent);
+  box-shadow: 0 12px 28px var(--shadow-review);
   backdrop-filter: blur(10px);
   pointer-events: none;
 }
@@ -220,7 +207,7 @@ h2 {
   line-height: 1.2;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--review-muted);
 }
 
 .promotion-head {
@@ -273,15 +260,20 @@ h2 {
   padding: 4px 8px;
   font-size: 11px;
   font-weight: 700;
-  background: rgba(23, 35, 49, 0.06);
+  background: var(--tag-bg);
   color: var(--text);
 }
 
+.base-price-tag {
+  background: var(--base-price-bg);
+  color: var(--base-price-text);
+}
+
 .ghost-button {
-  border: 1px solid rgba(21, 40, 61, 0.12);
+  border: 1px solid var(--border-strong);
   border-radius: 10px;
   padding: 6px 9px;
-  background: #fff;
+  background: var(--control-bg);
   color: var(--muted);
   font: inherit;
   font-size: 12px;
@@ -297,7 +289,7 @@ h2 {
   margin-top: 12px;
   border-radius: 14px;
   padding: 16px;
-  background: rgba(246, 248, 251, 0.85);
+  background: var(--panel-muted);
   color: var(--muted);
   text-align: center;
 }
@@ -337,7 +329,7 @@ h2 {
 }
 
 .app-version-link:focus-visible {
-  outline: 2px solid rgba(13, 120, 185, 0.32);
+  outline: 2px solid var(--accent-focus);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -349,13 +341,13 @@ h2 {
   justify-content: center;
   min-height: 42px;
   padding: 10px 12px;
-  border: 1px solid rgba(21, 40, 61, 0.12);
+  border: 1px solid var(--border-strong);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--panel);
   text-decoration: none;
   font-size: 13px;
   font-weight: 700;
-  box-shadow: 0 6px 14px rgba(27, 44, 68, 0.08);
+  box-shadow: 0 6px 14px var(--shadow-panel);
   transition:
     color 120ms ease,
     border-color 120ms ease,
@@ -365,27 +357,27 @@ h2 {
 }
 
 .footer-link:hover {
-  border-color: rgba(13, 120, 185, 0.28);
-  background: rgba(13, 120, 185, 0.08);
-  box-shadow: 0 10px 18px rgba(13, 120, 185, 0.14);
+  border-color: var(--accent-border-hover);
+  background: var(--accent-subtle);
+  box-shadow: 0 10px 18px var(--accent-shadow);
   transform: translateY(-1px);
 }
 
 .footer-link:focus-visible {
-  outline: 2px solid rgba(13, 120, 185, 0.32);
+  outline: 2px solid var(--accent-focus);
   outline-offset: 2px;
 }
 
 #open-history {
-  color: #fff;
+  color: var(--on-accent);
   background: var(--accent);
   border-color: transparent;
-  box-shadow: 0 8px 18px rgba(13, 120, 185, 0.24);
+  box-shadow: 0 8px 18px var(--accent-button-shadow);
 }
 
 #open-history:hover {
-  color: #fff;
-  background: #0b6aa3;
+  color: var(--on-accent);
+  background: var(--accent-hover);
 }
 
 #open-options {

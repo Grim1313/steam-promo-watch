@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getPopupStatusText, getVisiblePromotions } from "../src/ui/popup-state.js";
+import { getPopupStatusText, getPromotionBasePriceLabel, getVisiblePromotions } from "../src/ui/popup-state.js";
 
 test("getVisiblePromotions keeps only active entries for the popup", () => {
   const visible = getVisiblePromotions([
@@ -37,4 +37,13 @@ test("getPopupStatusText reports when no new free promotions were found", () => 
     getPopupStatusText({ lastCheckOutcome: "success", lastResultCount: 0 }),
     "No new free promotions found"
   );
+});
+
+test("getPromotionBasePriceLabel marks stored price as the base price", () => {
+  assert.equal(
+    getPromotionBasePriceLabel({ basePriceFormatted: "$19.99" }),
+    "Base price: $19.99"
+  );
+  assert.equal(getPromotionBasePriceLabel({ basePriceFormatted: "$0.00" }), "");
+  assert.equal(getPromotionBasePriceLabel({ basePriceFormatted: "Free" }), "");
 });

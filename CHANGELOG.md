@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+### What's new
+
+- Added automatic dark theme support for the popup, settings, and history pages.
+- Added the game's base price before the 100% discount to promotion cards when Steam provides it.
+
 ## 0.4.1
 
 ### What's new

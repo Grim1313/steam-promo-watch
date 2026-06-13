@@ -166,6 +166,7 @@ test("sanitizePromotionEntry preserves normalized review summary fields", () => 
   assert.deepEqual(
     sanitizePromotionEntry({
       id: "promo-1",
+      basePriceFormatted: "  $19.99  ",
       review_score: 8,
       review_score_desc: "Very Positive",
       total_positive: 42320,
@@ -182,6 +183,7 @@ test("sanitizePromotionEntry preserves normalized review summary fields", () => 
       promoType: "free-to-keep",
       rawTypeLabel: "",
       contentType: "unknown",
+      basePriceFormatted: "$19.99",
       url: "https://store.steampowered.com/",
       headerImage: "",
       capsuleImage: "",

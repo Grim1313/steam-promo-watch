@@ -113,7 +113,8 @@ test("enrichPromotions adds Steam review summary fields from appreviews", async 
                 ],
                 price_overview: {
                   initial: 999,
-                  final: 0
+                  final: 0,
+                  initial_formatted: "$9.99"
                 }
               }
             }
@@ -176,9 +177,11 @@ test("enrichPromotions adds Steam review summary fields from appreviews", async 
   assert.equal(result.promotions[0].reviewTotal, 49353);
   assert.equal(result.promotions[0].reviewPercent, 86);
   assert.equal(result.promotions[0].endsAt, endsAt);
+  assert.equal(result.promotions[0].basePriceFormatted, "$9.99");
 
   assert.equal(result.metadataCache["app:599140"].reviewScore, 8);
   assert.equal(result.metadataCache["app:599140"].reviewPercent, 86);
+  assert.equal(result.metadataCache["app:599140"].priceInitialFormatted, "$9.99");
   assert.equal(result.metadataCache["app:599140"].freeToKeepEndsAt, endsAt);
 });
 

@@ -11,6 +11,15 @@ export function getVisiblePromotions(entries, maxItems = 10) {
     .slice(0, maxItems);
 }
 
+export function getPromotionBasePriceLabel(entry = {}) {
+  const price = typeof entry?.basePriceFormatted === "string" ? entry.basePriceFormatted.trim() : "";
+  const normalizedDigits = price.replace(/[^\d.,]/g, "");
+  if (!price || /\bfree\b/i.test(price) || /^0(?:[.,]00)?$/.test(normalizedDigits)) {
+    return "";
+  }
+  return `Base price: ${price}`;
+}
+
 export function getPopupStatusText(runtimeState = {}) {
   if (runtimeState.checkInProgress) {
     return "Checking now...";
