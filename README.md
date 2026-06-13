@@ -1,8 +1,12 @@
-# Steam Promo Watch - track free game giveaways on Steam.
+# Steam Promo Watch - track new free game giveaways on Steam
+![GitHub Release](https://img.shields.io/github/v/release/Grim1313/steam-promo-watch) ![GitHub Release Date](https://img.shields.io/github/release-date/Grim1313/steam-promo-watch) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Grim1313/steam-promo-watch/total)
 
-Steam Promo Watch is a lightweight Chrome / Edge extension that watches Steam for `Free to Keep` promotions and notifies you when something new appears.
+Steam Promo Watch is a lightweight Chrome / Edge extension that watches Steam for `Free to Keep` 100% discount game promotions and notifies you when something new appears.
 
-[![Available in the Chrome Web Store](https://developer.chrome.com/static/docs/webstore/branding/image/UV4C4ybeBTsZt43U4xis.png)](https://chromewebstore.google.com/detail/steam-promo-watch/aahjgnocdbhipkfcmhkhlkneonhkafji)
+[![Available in the Chrome Web Store](https://developer.chrome.com/static/docs/webstore/branding/image/UV4C4ybeBTsZt43U4xis.png)](https://chromewebstore.google.com/detail/steam-promo-watch-free-ga/aahjgnocdbhipkfcmhkhlkneonhkafji)
+
+![Chrome Web Store Rating](https://img.shields.io/chrome-web-store/rating/aahjgnocdbhipkfcmhkhlkneonhkafji) ![Chrome Web Store Rating Count](https://img.shields.io/chrome-web-store/rating-count/aahjgnocdbhipkfcmhkhlkneonhkafji)
+
 
 Release notes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
