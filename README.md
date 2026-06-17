@@ -68,7 +68,7 @@ There are two installation methods.
 
 ### Method 1: Chrome Web Store installation:
 
-Follow [this link](https://chromewebstore.google.com/detail/steam-promo-watch/aahjgnocdbhipkfcmhkhlkneonhkafji) and click "Add to Chrome" button.
+Follow [this link](https://chromewebstore.google.com/detail/steam-promo-watch-free-ga/aahjgnocdbhipkfcmhkhlkneonhkafji) and click "Add to Chrome" button.
 
 ### Method 2: Manual installation:
 
